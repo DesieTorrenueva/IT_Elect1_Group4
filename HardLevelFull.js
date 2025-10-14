@@ -118,7 +118,7 @@ const HARD_WORDS = [
 
 const BEST_SCORE_KEY = '@wordguess:bestscore';
 
-export default function App() {
+export default function HardLevelFull() {
   const [shuffled, setShuffled] = useState(() => shuffleArray([...HARD_WORDS]));
   const [index, setIndex] = useState(0);
   const [displayChars, setDisplayChars] = useState([]);
