@@ -7,13 +7,19 @@ import {
   StyleSheet,
   Image,
   ActivityIndicator,
+  Modal,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { useFonts, Poppins_400Regular, Poppins_600SemiBold } from "@expo-google-fonts/poppins";
+import {
+  useFonts,
+  Poppins_400Regular,
+  Poppins_600SemiBold,
+} from "@expo-google-fonts/poppins";
 import { Ionicons } from "@expo/vector-icons";
 
 export default function SignIn({ navigation }) {
   const [showPassword, setShowPassword] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false); // 👈 Added state for popup
 
   const [fontsLoaded] = useFonts({
     Poppins_400Regular,
@@ -28,9 +34,14 @@ export default function SignIn({ navigation }) {
     );
   }
 
+  const handleSignIn = () => {
+    // simulate success
+    setShowSuccess(true);
+  };
+
   return (
     <LinearGradient colors={["#0b4c85ff", "#dfb487ff"]} style={styles.container}>
-      {/* 👇 Added Close (X) Button */}
+      {/* 👇 Close (X) Button */}
       <TouchableOpacity
         style={styles.closeButton}
         onPress={() => navigation.navigate("Home")}
@@ -38,7 +49,7 @@ export default function SignIn({ navigation }) {
         <Ionicons name="close" size={28} color="#fff" />
       </TouchableOpacity>
 
-      {/* Logo (higher position) */}
+      {/* Logo */}
       <View style={styles.logoContainer}>
         <Image
           source={require("../assets/logo.png")}
@@ -76,7 +87,7 @@ export default function SignIn({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.button}>
+        <TouchableOpacity style={styles.button} onPress={handleSignIn}>
           <Text style={styles.buttonText}>SUBMIT</Text>
         </TouchableOpacity>
 
@@ -90,6 +101,37 @@ export default function SignIn({ navigation }) {
           </Text>
         </Text>
       </View>
+
+      {/* 👇 Success Popup Modal */}
+      <Modal
+        transparent
+        animationType="fade"
+        visible={showSuccess}
+        onRequestClose={() => setShowSuccess(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Ionicons
+              name="checkmark-circle-outline"
+              size={64}
+              color="#1E90FF"
+              style={{ marginBottom: 10 }}
+            />
+            <Text style={styles.modalTitle}>Signing in successfully!</Text>
+            <Text style={styles.modalSubtitle}>Welcome back!</Text>
+
+            <TouchableOpacity
+              style={styles.okButton}
+              onPress={() => {
+                setShowSuccess(false);
+                navigation.navigate("Home"); // 👈 Goes to Home
+              }}
+            >
+              <Text style={styles.okText}>OK</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </LinearGradient>
   );
 }
@@ -106,7 +148,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  // 👇 Added style for the Close (X) Button
   closeButton: {
     position: "absolute",
     top: 50,
@@ -189,5 +230,49 @@ const styles = StyleSheet.create({
   signupLink: {
     color: "#1E90FF",
     fontFamily: "Poppins_600SemiBold",
+  },
+
+  // ✅ Popup Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalCard: {
+    width: "80%",
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    alignItems: "center",
+    padding: 25,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  modalTitle: {
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 16,
+    color: "#333",
+    textAlign: "center",
+  },
+  modalSubtitle: {
+    fontFamily: "Poppins_400Regular",
+    fontSize: 14,
+    color: "#666",
+    marginTop: 4,
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  okButton: {
+    backgroundColor: "#1E90FF",
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 30,
+  },
+  okText: {
+    color: "#fff",
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 15,
   },
 });
