@@ -8,7 +8,11 @@ import {
   Image,
   ActivityIndicator,
   Modal,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   useFonts,
@@ -17,9 +21,9 @@ import {
 } from "@expo-google-fonts/poppins";
 import { Ionicons } from "@expo/vector-icons";
 
-export default function SignIn({ navigation }) {
+export default function Signin({ navigation }) {
   const [showPassword, setShowPassword] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false); // 👈 Added state for popup
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const [fontsLoaded] = useFonts({
     Poppins_400Regular,
@@ -35,113 +39,130 @@ export default function SignIn({ navigation }) {
   }
 
   const handleSignIn = () => {
-    // simulate success
     setShowSuccess(true);
   };
 
   return (
-    <LinearGradient colors={["#0b4c85ff", "#dfb487ff"]} style={styles.container}>
-      {/* 👇 Close (X) Button */}
-      <TouchableOpacity
-        style={styles.closeButton}
-        onPress={() => navigation.navigate("Home")}
-      >
-        <Ionicons name="close" size={28} color="#fff" />
-      </TouchableOpacity>
-
-      {/* Logo */}
-      <View style={styles.logoContainer}>
-        <Image
-          source={require("../assets/logo.png")}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-      </View>
-
-      {/* Card content */}
-      <View style={styles.card}>
-        <Text style={styles.subtitle}>SIGN IN TO YOUR ACCOUNT</Text>
-
-        <TextInput
-          placeholder="USERNAME OR EMAIL"
-          placeholderTextColor="#999"
-          style={styles.input}
-        />
-
-        <View style={styles.passwordContainer}>
-          <TextInput
-            placeholder="PASSWORD"
-            placeholderTextColor="#999"
-            secureTextEntry={!showPassword}
-            style={[styles.input, { flex: 1, marginBottom: 0, borderWidth: 0 }]}
-          />
-          <TouchableOpacity
-            onPress={() => setShowPassword(!showPassword)}
-            style={styles.eyeIcon}
+    <LinearGradient colors={["#0b4c85ff", "#dfb487ff"]} style={styles.gradient}>
+      <SafeAreaView style={{ flex: 1 }}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : -80}
+        >
+          <ScrollView
+            contentContainerStyle={styles.scrollContainer}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            style={{ flex: 1, backgroundColor: "transparent" }}
           >
-            <Ionicons
-              name={showPassword ? "eye-off-outline" : "eye-outline"}
-              size={22}
-              color="#555"
-            />
-          </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity style={styles.button} onPress={handleSignIn}>
-          <Text style={styles.buttonText}>SUBMIT</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.signupText}>
-          Don’t have an account?{" "}
-          <Text
-            style={styles.signupLink}
-            onPress={() => navigation.navigate("SignUp")}
-          >
-            Sign up
-          </Text>
-        </Text>
-      </View>
-
-      {/* 👇 Success Popup Modal */}
-      <Modal
-        transparent
-        animationType="fade"
-        visible={showSuccess}
-        onRequestClose={() => setShowSuccess(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Ionicons
-              name="checkmark-circle-outline"
-              size={64}
-              color="#1E90FF"
-              style={{ marginBottom: 10 }}
-            />
-            <Text style={styles.modalTitle}>Signing in successfully!</Text>
-            <Text style={styles.modalSubtitle}>Welcome back!</Text>
-
+            {/* Close (X) Button */}
             <TouchableOpacity
-              style={styles.okButton}
-              onPress={() => {
-                setShowSuccess(false);
-                navigation.navigate("Home"); // 👈 Goes to Home
-              }}
+              style={styles.closeButton}
+              onPress={() => navigation.navigate("Home")}
             >
-              <Text style={styles.okText}>OK</Text>
+              <Ionicons name="close" size={28} color="#fff" />
             </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+
+            {/* Logo */}
+            <View style={styles.logoContainer}>
+              <Image
+                source={require("../assets/logo.png")}
+                style={styles.logo}
+                resizeMode="contain"
+              />
+            </View>
+
+            {/* Card */}
+            <View style={styles.card}>
+              <Text style={styles.subtitle}>SIGN IN TO YOUR ACCOUNT</Text>
+
+              <TextInput
+                placeholder="USERNAME OR EMAIL"
+                placeholderTextColor="#999"
+                style={styles.input}
+              />
+
+              <View style={styles.passwordContainer}>
+                <TextInput
+                  placeholder="PASSWORD"
+                  placeholderTextColor="#999"
+                  secureTextEntry={!showPassword}
+                  style={[styles.input, { flex: 1, marginBottom: 0, borderWidth: 0 }]}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.eyeIcon}
+                >
+                  <Ionicons
+                    name={showPassword ? "eye-off-outline" : "eye-outline"}
+                    size={22}
+                    color="#555"
+                  />
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity style={styles.button} onPress={handleSignIn}>
+                <Text style={styles.buttonText}>SUBMIT</Text>
+              </TouchableOpacity>
+
+              <Text style={styles.signupText}>
+                Don’t have an account?{" "}
+                <Text
+                  style={styles.signupLink}
+                  onPress={() => navigation.navigate("SignUp")}
+                >
+                  Sign up
+                </Text>
+              </Text>
+            </View>
+          </ScrollView>
+
+          {/* Success Modal */}
+          <Modal
+            transparent
+            animationType="fade"
+            visible={showSuccess}
+            onRequestClose={() => setShowSuccess(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalCard}>
+                <Ionicons
+                  name="checkmark-circle-outline"
+                  size={64}
+                  color="#1E90FF"
+                  style={{ marginBottom: 10 }}
+                />
+                <Text style={styles.modalTitle}>Signing in successfully!</Text>
+                <Text style={styles.modalSubtitle}>Welcome back!</Text>
+
+                <TouchableOpacity
+                  style={styles.okButton}
+                  onPress={() => {
+                    setShowSuccess(false);
+                    navigation.navigate("Home");
+                  }}
+                >
+                  <Text style={styles.okText}>OK</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
     </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  gradient: {
     flex: 1,
-    justifyContent: "flex-start",
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    justifyContent: "center",
     alignItems: "center",
-    paddingTop: 80,
+    paddingVertical: 40,
   },
   loadingContainer: {
     flex: 1,
@@ -150,15 +171,17 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     position: "absolute",
-    top: 50,
-    right: 25,
+    top: 15, // 👈 moved higher (was 25)
+    right: 20,
     zIndex: 10,
     backgroundColor: "rgba(0,0,0,0.3)",
     padding: 8,
     borderRadius: 20,
   },
   logoContainer: {
-    marginBottom: 20,
+    marginTop: -60, // 👈 pushes logo higher
+    marginBottom: 10,
+    alignItems: "center",
   },
   logo: {
     width: 300,
@@ -231,8 +254,6 @@ const styles = StyleSheet.create({
     color: "#1E90FF",
     fontFamily: "Poppins_600SemiBold",
   },
-
-  // ✅ Popup Modal Styles
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.4)",
