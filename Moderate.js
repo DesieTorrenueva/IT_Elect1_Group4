@@ -1,181 +1,167 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
+  SafeAreaView,
   View,
   Text,
+  TextInput,
   TouchableOpacity,
+  FlatList,
   StyleSheet,
   Alert,
-  Image,
-  Dimensions,
-  ActivityIndicator,
+  Keyboard,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
-import {
-  useFonts,
-  Poppins_400Regular,
-  Poppins_600SemiBold,
-} from "@expo-google-fonts/poppins";
 
-const { width: screenWidth } = Dimensions.get("window");
+// Moderate word list with short hints. You can expand or replace this list.
+const WORDS = [
+  { word: "HOSPITAL", hint: "A place where doctors work" },
+  { word: "COMPUTER", hint: "Used to browse the internet and play games" },
+  { word: "LIBRARY", hint: "A quiet place full of books" },
+  { word: "MOUNTAIN", hint: "A tall landform that reaches high into the sky" },
+  { word: "AIRPLANE", hint: "Travels through the sky" },
+const MAX_WRONG = 7; // number of wrong guesses allowed
 
-const levels = [
- { word: "POLICE", hint: "Keeps people safe and enforces laws" },
-  { word: "GUITAR", hint: "A musical instrument with strings" },
-  { word: "VOLCANO", hint: "Erupts with lava and ash" },
-  { word: "BRIDGE", hint: "Connects two areas over a river or road" },
-  { word: "ROBOT", hint: "A machine that can do tasks automatically" }
-];
+export default function Moderate() {
+  const [wordObj, setWordObj] = useState(() => randomWord());
+  const [guessedLetters, setGuessedLetters] = useState([]);
+  const [wrongCount, setWrongCount] = useState(0);
+  const [input, setInput] = useState("");
+  const [message, setMessage] = useState("");
+  const [revealedHint, setRevealedHint] = useState(false);
+  const inputRef = useRef(null);
 
-export default function Level() {
-  const navigation = useNavigation();
-  const [level, setLevel] = useState(0);
-  const [score, setScore] = useState(0);
-  const [userInput, setUserInput] = useState([]);
-  const [completed, setCompleted] = useState(false);
+  useEffect(() => {
+    resetForNewWord(wordObj);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wordObj.w]);
 
-  const [fontsLoaded] = useFonts({
-    Poppins_400Regular,
-    Poppins_600SemiBold,
-  });
+  function randomWord() {
+    const idx = Math.floor(Math.random() * WORDS.length);
+    return WORDS[idx];
+  }
 
-  if (!fontsLoaded) {
+  function resetForNewWord(newWordObj = randomWord()) {
+    setWordObj(newWordObj);
+    setGuessedLetters([]);
+    setWrongCount(0);
+    setInput("");
+    setMessage("");
+    setRevealedHint(false);
+  }
+
+  function displayProgress() {
+    return wordObj.w
+      .split("")
+      .map((ch) => (guessedLetters.includes(ch.toLowerCase()) ? ch : "_"))
+      .join(" ");
+  }
+
+  function isWon() {
+    return wordObj.w.split("").every((c) => guessedLetters.includes(c));
+  }
+
+  function isLost() {
+    return wrongCount >= MAX_WRONG;
+  }
+
+  function consumeLetter(letter) {
+    letter = letter.toLowerCase();
+    if (!/^[a-z]$/.test(letter)) return;
+    if (guessedLetters.includes(letter)) return;
+
+    setGuessedLetters((prev) => [...prev, letter]);
+
+    if (!wordObj.w.includes(letter)) {
+      setWrongCount((c) => c + 1);
+    }
+  }
+
+  function onSubmitGuess() {
+    const val = input.trim().toLowerCase();
+    if (!val) return;
+
+    // If user guessed full word
+    if (val.length > 1) {
+      if (val === wordObj.w) {
+        // reveal all letters
+        setGuessedLetters(wordObj.w.split(""));
+        setMessage("You guessed the word! Nice!");
+      } else {
+        setWrongCount((c) => c + 1);
+        setMessage("Wrong word guess — try letters or another word.");
+      }
+    } else {
+      consumeLetter(val);
+    }
+
+    setInput("");
+    Keyboard.dismiss();
+  }
+
+  useEffect(() => {
+    if (isWon()) {
+      setMessage("🎉 You won! Tap Next Word to play again.");
+    } else if (isLost()) {
+      setMessage(`😞 You lost — the word was: ${wordObj.w}`);
+    } else {
+      setMessage("");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [guessedLetters, wrongCount]);
+
+  function revealHint() {
+    setRevealedHint(true);
+    setWrongCount((c) => Math.min(MAX_WRONG, c + 1)); // cost: one wrong attempt
+  }
+
+  function nextWord() {
+    resetForNewWord(randomWord());
+  }
+
+  function letterButtons() {
+    const letters = "abcdefghijklmnopqrstuvwxyz".split("");
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#1B4D90" />
-      </View>
+      <FlatList
+        contentContainerStyle={styles.lettersContainer}
+        data={letters}
+        numColumns={7}
+        keyExtractor={(item) => item}
+        renderItem={({ item }) => {
+          const disabled = guessedLetters.includes(item) || isWon() || isLost();
+          return (
+            <TouchableOpacity
+              style={[
+                styles.letterBtn,
+                disabled && styles.letterBtnDisabled,
+              ]}
+              onPress={() => consumeLetter(item)}
+              disabled={disabled}
+            >
+              <Text style={styles.letterText}>{item.toUpperCase()}</Text>
+            </TouchableOpacity>
+          );
+        }}
+      />
     );
   }
-
-  const current = levels[level];
-  const wordLetters = current.word.split("");
-  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
-
-  // Smaller word box size for responsiveness
-  const totalMargin = (wordLetters.length - 1) * 6;
-  const boxWidth = Math.min(
-    50,
-    (screenWidth - 60 - totalMargin) / wordLetters.length
-  );
-  const boxHeight = boxWidth * 1.2;
-
-  // Handle letter press
-  const handleGuess = (letter) => {
-    if (userInput.length >= wordLetters.length) return;
-
-    const newInput = [...userInput, letter];
-    setUserInput(newInput);
-
-    if (newInput.length === wordLetters.length) {
-      const guessWord = newInput.join("");
-      const correctWord = current.word;
-
-      setTimeout(() => {
-        if (guessWord === correctWord) {
-          const newScore = score + 10;
-          setScore(newScore);
-          if (level + 1 === levels.length) {
-            setCompleted(true);
-            Alert.alert("🏁 Game Complete!", `Your final score: ${newScore}`);
-          } else {
-            Alert.alert("✅ Correct!", `+10 points! Moving to next level.`);
-            setTimeout(() => {
-              setLevel(level + 1);
-              setUserInput([]);
-            }, 800);
-          }
-        } else {
-          Alert.alert("❌ Try Again!", "That’s not correct.");
-          setUserInput([]);
-        }
-      }, 300);
-    }
-  };
-
-  // Handle erase
-  const handleErase = () => {
-    if (userInput.length > 0) {
-      const newInput = [...userInput];
-      newInput.pop();
-      setUserInput(newInput);
-    }
-  };
-
-  if (completed) {
-    return (
-      <View style={styles.container}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.navigate("Home")}
-        >
-          <Ionicons name="arrow-back" size={28} color="#333" />
-        </TouchableOpacity>
-
-        <Image
-          source={require("../assets/logo.png")}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-        <Text style={[styles.title, { fontFamily: "Poppins_600SemiBold" }]}>
-          🎉 Congratulations!
-        </Text>
-        <Text style={[styles.text, { fontFamily: "Poppins_400Regular" }]}>
-          You finished all levels.
-        </Text>
-        <Text style={[styles.text, { fontFamily: "Poppins_400Regular" }]}>
-          Final Score: {score}
-        </Text>
-      </View>
-    );
-  }
-
-  // Break alphabet into 4-column rows
-  const rows = [];
-  for (let i = 0; i < alphabet.length; i += 4) {
-    rows.push(alphabet.slice(i, i + 4));
-  }
-  // Add Erase button next to Z (last row)
-  rows[rows.length - 1].push("Erase");
 
   return (
-    <View style={styles.container}>
-      {/* 🔙 Back Button */}
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={() => navigation.navigate("Home")}
-      >
-        <Ionicons name="arrow-back" size={28} color="#333" />
-      </TouchableOpacity>
+    <SafeAreaView style={styles.container}>
+      <Text style={styles.title}>Word Guess (Moderate)</Text>
 
-      {/* Logo */}
-      <Image
-        source={require("../assets/logo.png")}
-        style={styles.logo}
-        resizeMode="contain"
-      />
+      <View style={styles.card}>
+        <Text style={styles.label}>Progress</Text>
+        <Text style={styles.progress}>{displayProgress()}</Text>
 
-      {/* Level and Score */}
-      <View style={styles.topInfo}>
-        <Text style={[styles.level, { fontFamily: "Poppins_400Regular" }]}>
-          Level: {level + 1}
-        </Text>
-        <Text style={[styles.score, { fontFamily: "Poppins_400Regular" }]}>
-          Score: {score}
-        </Text>
-      </View>
+        <View style={styles.rowSpace}>
+          <Text style={styles.small}>Wrong: {wrongCount} / {MAX_WRONG}</Text>
+          <Text style={styles.small}>Used: {guessedLetters.filter(l=>!wordObj.w.includes(l)).join(", ") || "—"}</Text>
+        </View>
 
-      {/* Hint */}
-      <View style={styles.hintContainer}>
-        <Text style={[styles.hint, { fontFamily: "Poppins_400Regular" }]}>
-          {current.hint}
-        </Text>
-      </View>
+        <View style={{ marginTop: 10 }}>{letterButtons()}</View>
 
-      {/* Word Boxes */}
-      <View style={styles.wordContainer}>
-        {wordLetters.map((_, i) => (
-          <View
-            key={i}
-style={[styles.box, { width: boxWidth, height: boxHeight }]}
-
-           
+        <View style={styles.inputRow}>
+          <TextInput
+            ref={inputRef}
+            value={input}
+            onChangeText={setInput}
+            placeholder="Type a lett
