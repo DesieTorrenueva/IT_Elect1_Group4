@@ -24,7 +24,13 @@ const levels = [
   { word: "MIRROR", hint: "Reflects your image" },
   { word: "BLANKET", hint: "Keeps you warm while sleeping" },
   { word: "GARDEN", hint: "Where flowers and plants grow" },
-  { word: "BRUSH", hint: "Used to comb hair or clean surfaces" }
+  { word: "BRUSH", hint: "Used to comb hair or clean surfaces" },
+
+  { word: "PHONE", hint: "Used to call or text people" },
+  { word: "TABLE", hint: "Furniture where you put things" },
+  { word: "CLOUD", hint: "White and floats in the sky" },
+  { word: "RIVER", hint: "Flows with water toward the sea" },
+  { word: "MUSIC", hint: "You listen to this for entertainment" }
 ];
 
 export default function Easy() {

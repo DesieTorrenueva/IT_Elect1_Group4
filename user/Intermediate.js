@@ -24,7 +24,19 @@ const levels = [
   { word: "ELECTRICITY", hint: "Powers most modern devices" },
   { word: "CALENDAR", hint: "Shows days, months, and years" },
   { word: "JOURNALIST", hint: "Writes and reports the news" },
-  { word: "SATURN", hint: "A planet with visible rings" }
+  { word: "SATURN", hint: "A planet with visible rings" },
+
+  { word: "POLICE", hint: "Keeps people safe and enforces laws" },
+  { word: "GUITAR", hint: "A musical instrument with strings" },
+  { word: "VOLCANO", hint: "Erupts with lava and ash" },
+  { word: "BRIDGE", hint: "Connects two areas over a river or road" },
+  { word: "ROBOT", hint: "A machine that can do tasks automatically" },
+  
+  { word: "HOSPITAL", hint: "A place where doctors work" },
+  { word: "COMPUTER", hint: "Used to browse the internet and play games" },
+  { word: "LIBRARY", hint: "A quiet place full of books" },
+  { word: "MOUNTAIN", hint: "A tall landform that reaches high into the sky" },
+  { word: "AIRPLANE", hint: "Travels through the sky" }
 ];
 
 export default function Expert() {

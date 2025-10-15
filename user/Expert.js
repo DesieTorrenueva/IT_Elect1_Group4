@@ -25,11 +25,18 @@ const levels = [
   { word: "CRYPTOGRAPHY", hint: "The art of writing or solving codes" },
   { word: "THERMODYNAMICS", hint: "The study of heat and energy transfer" },
   { word: "MICROSCOPY", hint: "Using microscopes to view tiny objects" },
+
   { word: "ALGORITHM", hint: "A set of rules for solving problems in computing" },
   { word: "INVESTIGATION", hint: "A detailed examination or inquiry" },
   { word: "PHILOSOPHY", hint: "The study of knowledge and existence" },
   { word: "REVOLUTION", hint: "A major change or overthrow of a system" },
-  { word: "EXPERIMENT", hint: "A test done to prove a hypothesis" }
+  { word: "EXPERIMENT", hint: "A test done to prove a hypothesis" },
+
+  { word: "NEUROLOGY", hint: "The branch of medicine that studies the brain" },
+  { word: "PHYSICS", hint: "The study of matter, energy, and motion" },
+  { word: "DEMOCRACY", hint: "A system of government by the people" },
+  { word: "ARCHITECTURE", hint: "The art and science of designing buildings" },
+  { word: "ENVIRONMENT", hint: "The natural world around us" }
 ];
 
 export default function Expert() {
