@@ -26,7 +26,11 @@ export default function HomeScreen({ navigation }) {
         {/* Buttons */}
         <View style={styles.buttonsContainer}>
           {/* Play as Guest */}
-          <TouchableOpacity style={[styles.button, styles.guestButton]}>
+          <TouchableOpacity
+  style={[styles.button, styles.guestButton]}
+  onPress={() => navigation.navigate("ForGuest")} // ✅ navigate to ForGuest screen
+>
+
             <FontAwesome name="user-secret" size={22} color="#000" />
             <Text style={[styles.buttonText, styles.darkText, styles.poppinsText]}>
               PLAY AS GUEST
