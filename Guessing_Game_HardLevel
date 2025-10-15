@@ -1,0 +1,296 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+    StyleSheet,
+    Text,
+    View,
+    TouchableOpacity,
+    SafeAreaView,
+    Alert,
+    Dimensions,
+} from 'react-native';
+
+const { width } = Dimensions.get('window');
+
+const HARD_LEVEL_QUESTIONS = [
+    { word: "NEUROLOGY", hint: "The branch of medicine that studies the brain" },
+    { word: "PHYSICS", hint: "The study of matter, energy, and motion" },
+    { word: "DEMOCRACY", hint: "A system of government by the people" },
+    { word: "ARCHITECTURE", hint: "The art and science of designing buildings" },
+    { word: "ENVIRONMENT", hint: "The natural world around us" },
+];
+
+
+const GuessTheWordHard = () => {
+    const [currentLevel, setCurrentLevel] = useState(1);
+    const [score, setScore] = useState(0);
+    const [currentWord, setCurrentWord] = useState('');
+    const [currentHint, setCurrentHint] = useState('');
+    const [guessedLetters, setGuessedLetters] = useState(new Set());
+    const [displayedWord, setDisplayedWord] = useState([]);
+    const [isGameOver, setIsGameOver] = useState(false);
+
+    const startNewLevel = useCallback((level) => {
+        if (level > HARD_LEVEL_QUESTIONS.length) {
+            Alert.alert("Game Complete!", "You've finished the hard level words!");
+            setIsGameOver(true);
+            return;
+        }
+
+        const question = HARD_LEVEL_QUESTIONS[level - 1];
+        const word = question.word.toUpperCase();
+
+        setCurrentWord(word);
+        setCurrentHint(question.hint);
+        setGuessedLetters(new Set());
+
+        setDisplayedWord(word.split('').map(char => char === ' ' ? ' ' : '_'));
+        setIsGameOver(false);
+    }, []);
+
+
+    useEffect(() => {
+        startNewLevel(currentLevel);
+    }, [currentLevel, startNewLevel]);
+
+
+    const updateDisplayedWord = (latestGuessedLetters) => {
+        const newDisplayedWord = currentWord.split('').map(char => {
+            const upperChar = char.toUpperCase();
+            if (latestGuessedLetters.has(upperChar) || char === ' ') {
+                return upperChar;
+            }
+            return '_';
+        });
+        setDisplayedWord(newDisplayedWord);
+
+        if (!newDisplayedWord.includes('_')) {
+            Alert.alert(
+                "Correct!",
+                You guessed the word: ${ currentWord },
+                [
+                    {
+                        text: "Next Level", onPress: () => {
+                            setScore(prev => prev + 10);
+                            setCurrentLevel(prev => prev + 1);
+                        }
+                    }
+                ]
+            );
+        }
+    };
+
+
+    const handleLetterPress = (letter) => {
+        if (isGameOver || guessedLetters.has(letter)) return;
+
+        const newGuessedLetters = new Set(guessedLetters);
+        newGuessedLetters.add(letter);
+        setGuessedLetters(newGuessedLetters);
+
+        if (currentWord.includes(letter)) {
+            updateDisplayedWord(newGuessedLetters);
+        } else {
+
+        }
+    };
+
+
+    const generateAlphabet = () => {
+        const alphabet = [];
+        for (let i = 65; i <= 90; i++) {
+            alphabet.push(String.fromCharCode(i));
+        }
+        return alphabet;
+    };
+
+    const alphabet = generateAlphabet();
+
+
+    return (
+        <SafeAreaView style={styles.container}>
+            {
+
+            }
+            <View style={styles.header}>
+                <TouchableOpacity style={styles.backButton}>
+                    <Text style={styles.backArrow}>←</Text>
+                </TouchableOpacity>
+                <Text style={styles.logo}>❓ GUESS THE WORD</Text>
+                <View style={styles.spacer} />
+            </View>
+
+            {
+
+            }
+            <View style={styles.statsContainer}>
+                <Text style={styles.statText}>Level: {currentLevel}</Text>
+                <Text style={styles.statText}>Score: {score}</Text>
+            </View>
+
+            <View style={styles.hintBox}>
+                <Text style={styles.hintText}>{currentHint}</Text>
+            </View>
+
+            {
+
+            }
+            <View style={styles.wordContainer}>
+                {displayedWord.map((char, index) => (
+                    <View key={index} style={[styles.letterBox, char === ' ' && styles.spaceBox]}>
+                        <Text style={styles.letterText}>{char === ' ' ? '' : char}</Text>
+                    </View>
+                ))}
+            </View>
+
+            {
+
+            }
+            <View style={styles.keyboardContainer}>
+                {alphabet.map((letter) => (
+                    <TouchableOpacity
+                        key={letter}
+                        style={[
+                            styles.keyButton,
+                            guessedLetters.has(letter) ? styles.keyButtonDisabled : styles.keyButtonActive,
+                        ]}
+                        onPress={() => handleLetterPress(letter)}
+                        disabled={guessedLetters.has(letter) || isGameOver}
+                    >
+                        <Text style={styles.keyText}>{letter}</Text>
+                    </TouchableOpacity>
+                ))}
+                {
+
+                }
+                <TouchableOpacity style={[styles.keyButton, styles.keyButtonRed]}>
+                    <Text style={styles.keyText}>❌</Text>
+                </TouchableOpacity>
+            </View>
+        </SafeAreaView>
+    );
+};
+
+const keyButtonSize = (width - 40) / 7;
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: '#e6f7ff',
+        paddingTop: 10,
+    },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 15,
+        marginBottom: 20,
+    },
+    backButton: {
+        padding: 10,
+    },
+    backArrow: {
+        fontSize: 24,
+        color: '#007aff',
+    },
+    logo: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#007aff',
+        textAlign: 'center',
+        flex: 1,
+    },
+    spacer: {
+        width: 30,
+    },
+    statsContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        marginBottom: 20,
+    },
+    statText: {
+        fontSize: 18,
+        color: '#333',
+        fontWeight: '500',
+    },
+    hintBox: {
+        backgroundColor: 'white',
+        marginHorizontal: 20,
+        paddingVertical: 15,
+        paddingHorizontal: 10,
+        borderRadius: 8,
+        marginBottom: 40,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 1.5,
+    },
+    hintText: {
+        fontSize: 16,
+        textAlign: 'center',
+        color: '#555',
+    },
+    wordContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'center',
+        marginBottom: 40,
+        paddingHorizontal: 10,
+    },
+    letterBox: {
+        width: 35,
+        height: 45,
+        margin: 4,
+        borderBottomWidth: 3,
+        borderBottomColor: '#007aff',
+        backgroundColor: 'white',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 4,
+    },
+    spaceBox: {
+        backgroundColor: 'transparent',
+        borderBottomWidth: 0,
+    },
+    letterText: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#333',
+    },
+    keyboardContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'center',
+        paddingHorizontal: 5,
+    },
+    keyButton: {
+        width: keyButtonSize,
+        height: keyButtonSize,
+        margin: 4,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+        elevation: 3,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+    },
+    keyButtonActive: {
+        backgroundColor: '#4a90e2',
+    },
+    keyButtonDisabled: {
+        backgroundColor: '#b0c4de',
+    },
+    keyButtonRed: {
+        backgroundColor: '#d9534f',
+    },
+    keyText: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: 'white',
+    },
+});
+
+export default GuessTheWordHard;
