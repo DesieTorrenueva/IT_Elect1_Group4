@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -24,6 +25,10 @@ import { Ionicons } from "@expo/vector-icons";
 export default function Signin({ navigation }) {
   const [showPassword, setShowPassword] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   const [fontsLoaded] = useFonts({
     Poppins_400Regular,
@@ -39,7 +44,27 @@ export default function Signin({ navigation }) {
   }
 
   const handleSignIn = () => {
-    setShowSuccess(true);
+    setLoading(true);
+
+    // 🧠 Default credentials
+    const adminEmail = "admin@example.com";
+    const adminPassword = "admin123";
+    const testEmail = "testuser@example.com";
+    const testPassword = "test123";
+
+    // Simulate auth check
+    setTimeout(() => {
+      setLoading(false);
+
+      if (
+        (email === adminEmail && password === adminPassword) ||
+        (email === testEmail && password === testPassword)
+      ) {
+        setShowSuccess(true);
+      } else {
+        Alert.alert("Invalid credentials", "Please check your email and password.");
+      }
+    }, 1200);
   };
 
   return (
@@ -80,6 +105,10 @@ export default function Signin({ navigation }) {
               <TextInput
                 placeholder="USERNAME OR EMAIL"
                 placeholderTextColor="#999"
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
                 style={styles.input}
               />
 
@@ -88,6 +117,8 @@ export default function Signin({ navigation }) {
                   placeholder="PASSWORD"
                   placeholderTextColor="#999"
                   secureTextEntry={!showPassword}
+                  value={password}
+                  onChangeText={setPassword}
                   style={[styles.input, { flex: 1, marginBottom: 0, borderWidth: 0 }]}
                 />
                 <TouchableOpacity
@@ -102,8 +133,16 @@ export default function Signin({ navigation }) {
                 </TouchableOpacity>
               </View>
 
-              <TouchableOpacity style={styles.button} onPress={handleSignIn}>
-                <Text style={styles.buttonText}>SUBMIT</Text>
+              <TouchableOpacity
+                style={[styles.button, loading && { opacity: 0.7 }]}
+                onPress={handleSignIn}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.buttonText}>SUBMIT</Text>
+                )}
               </TouchableOpacity>
 
               <Text style={styles.signupText}>
@@ -134,7 +173,11 @@ export default function Signin({ navigation }) {
                   style={{ marginBottom: 10 }}
                 />
                 <Text style={styles.modalTitle}>Signing in successfully!</Text>
-                <Text style={styles.modalSubtitle}>Welcome back!</Text>
+                <Text style={styles.modalSubtitle}>
+                  {email === "admin@example.com"
+                    ? "Welcome, Admin 👑"
+                    : "Welcome back!"}
+                </Text>
 
                 <TouchableOpacity
                   style={styles.okButton}
@@ -154,10 +197,9 @@ export default function Signin({ navigation }) {
   );
 }
 
+// --- Styles remain unchanged ---
 const styles = StyleSheet.create({
-  gradient: {
-    flex: 1,
-  },
+  gradient: { flex: 1 },
   scrollContainer: {
     flexGrow: 1,
     justifyContent: "center",
@@ -171,7 +213,7 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     position: "absolute",
-    top: 15, // 👈 moved higher (was 25)
+    top: 15,
     right: 20,
     zIndex: 10,
     backgroundColor: "rgba(0,0,0,0.3)",
@@ -179,14 +221,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   logoContainer: {
-    marginTop: -60, // 👈 pushes logo higher
+    marginTop: -60,
     marginBottom: 10,
     alignItems: "center",
   },
-  logo: {
-    width: 300,
-    height: 300,
-  },
+  logo: { width: 300, height: 300 },
   card: {
     width: "85%",
     backgroundColor: "rgba(255, 255, 255, 0.9)",
@@ -227,9 +266,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#ddd",
   },
-  eyeIcon: {
-    paddingHorizontal: 10,
-  },
+  eyeIcon: { paddingHorizontal: 10 },
   button: {
     width: "100%",
     height: 50,
@@ -250,10 +287,7 @@ const styles = StyleSheet.create({
     color: "#333",
     marginTop: 20,
   },
-  signupLink: {
-    color: "#1E90FF",
-    fontFamily: "Poppins_600SemiBold",
-  },
+  signupLink: { color: "#1E90FF", fontFamily: "Poppins_600SemiBold" },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.4)",
