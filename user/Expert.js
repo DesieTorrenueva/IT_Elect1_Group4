@@ -1,13 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   Image,
   Dimensions,
   ActivityIndicator,
+  Animated,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -16,6 +16,7 @@ import {
   Poppins_400Regular,
   Poppins_600SemiBold,
 } from "@expo-google-fonts/poppins";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -45,25 +46,33 @@ export default function Expert() {
   const [score, setScore] = useState(0);
   const [userInput, setUserInput] = useState([]);
   const [completed, setCompleted] = useState(false);
+  const [wrong, setWrong] = useState(false);
+
+  const shakeAnim = useRef(new Animated.Value(0)).current;
 
   const [fontsLoaded] = useFonts({
     Poppins_400Regular,
     Poppins_600SemiBold,
   });
 
-  if (!fontsLoaded) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#1B4D90" />
-      </View>
-    );
-  }
+  useEffect(() => {
+    const loadStoredScore = async () => {
+      try {
+        const storedScore = await AsyncStorage.getItem("userScore");
+        if (storedScore !== null) {
+          setScore(parseInt(storedScore));
+        }
+      } catch (error) {
+        console.error("Error loading stored score:", error);
+      }
+    };
+    loadStoredScore();
+  }, []);
 
   const current = levels[level];
   const wordLetters = current.word.split("");
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
-  // Smaller word box size for responsiveness
   const totalMargin = (wordLetters.length - 1) * 6;
   const boxWidth = Math.min(
     50,
@@ -71,7 +80,25 @@ export default function Expert() {
   );
   const boxHeight = boxWidth * 1.2;
 
-  // Handle letter press
+  const updateStoredScore = async (newScore) => {
+    try {
+      await AsyncStorage.setItem("userScore", newScore.toString());
+    } catch (error) {
+      console.error("Error saving score:", error);
+    }
+  };
+
+  const triggerShake = () => {
+    setWrong(true);
+    Animated.sequence([
+      Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: -10, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 6, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: -6, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
+    ]).start(() => setWrong(false));
+  };
+
   const handleGuess = (letter) => {
     if (userInput.length >= wordLetters.length) return;
 
@@ -84,34 +111,33 @@ export default function Expert() {
 
       setTimeout(() => {
         if (guessWord === correctWord) {
-          const newScore = score + 10;
+          const newScore = score + 30;
           setScore(newScore);
+          updateStoredScore(newScore);
+
           if (level + 1 === levels.length) {
             setCompleted(true);
-            Alert.alert("🏁 Game Complete!", `Your final score: ${newScore}`);
           } else {
-            Alert.alert("✅ Correct!", `+10 points! Moving to next level.`);
             setTimeout(() => {
               setLevel(level + 1);
               setUserInput([]);
-            }, 800);
+            }, 500);
           }
         } else {
-          Alert.alert("❌ Try Again!", "That’s not correct.");
-          setUserInput([]);
+          triggerShake();
+          setTimeout(() => setUserInput([]), 500);
         }
-      }, 300);
+      }, 200);
     }
   };
 
-  // Handle erase
-  const handleErase = () => {
-    if (userInput.length > 0) {
-      const newInput = [...userInput];
-      newInput.pop();
-      setUserInput(newInput);
-    }
-  };
+  if (!fontsLoaded) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#1B4D90" />
+      </View>
+    );
+  }
 
   if (completed) {
     return (
@@ -132,7 +158,7 @@ export default function Expert() {
           🎉 Congratulations!
         </Text>
         <Text style={[styles.text, { fontFamily: "Poppins_400Regular" }]}>
-          You finished all levels.
+          You finished all levels!
         </Text>
         <Text style={[styles.text, { fontFamily: "Poppins_400Regular" }]}>
           Final Score: {score}
@@ -141,17 +167,14 @@ export default function Expert() {
     );
   }
 
-  // Break alphabet into 4-column rows
   const rows = [];
   for (let i = 0; i < alphabet.length; i += 4) {
     rows.push(alphabet.slice(i, i + 4));
   }
-  // Add Erase button next to Z (last row)
   rows[rows.length - 1].push("Erase");
 
   return (
     <View style={styles.container}>
-      {/* 🔙 Back Button */}
       <TouchableOpacity
         style={styles.backButton}
         onPress={() => navigation.navigate("GameDashboard")}
@@ -159,14 +182,12 @@ export default function Expert() {
         <Ionicons name="arrow-back" size={28} color="#333" />
       </TouchableOpacity>
 
-      {/* Logo */}
       <Image
         source={require("../assets/logo.png")}
         style={styles.logo}
         resizeMode="contain"
       />
 
-      {/* Level and Score */}
       <View style={styles.topInfo}>
         <Text style={[styles.level, { fontFamily: "Poppins_400Regular" }]}>
           Level: {level + 1}
@@ -176,19 +197,30 @@ export default function Expert() {
         </Text>
       </View>
 
-      {/* Hint */}
       <View style={styles.hintContainer}>
         <Text style={[styles.hint, { fontFamily: "Poppins_400Regular" }]}>
           {current.hint}
         </Text>
       </View>
 
-      {/* Word Boxes */}
-      <View style={styles.wordContainer}>
+      <Animated.View
+        style={[
+          styles.wordContainer,
+          { transform: [{ translateX: shakeAnim }] },
+        ]}
+      >
         {wordLetters.map((_, i) => (
           <View
             key={i}
-            style={[styles.box, { width: boxWidth, height: boxHeight }]}
+            style={[
+              styles.box,
+              {
+                width: boxWidth,
+                height: boxHeight,
+                borderColor: wrong ? "#E74C3C" : "#1B4D90",
+                backgroundColor: wrong ? "#FFD6D6" : "#fff",
+              },
+            ]}
           >
             <Text
               style={[
@@ -200,9 +232,8 @@ export default function Expert() {
             </Text>
           </View>
         ))}
-      </View>
+      </Animated.View>
 
-      {/* Keyboard (4 columns per row) */}
       <View style={styles.keyboard}>
         {rows.map((row, rowIndex) => (
           <View key={rowIndex} style={styles.row}>
@@ -211,7 +242,7 @@ export default function Expert() {
                 <TouchableOpacity
                   key={key}
                   style={styles.eraseKey}
-                  onPress={handleErase}
+                  onPress={() => setUserInput(userInput.slice(0, -1))}
                 >
                   <Ionicons name="backspace-outline" size={26} color="#fff" />
                 </TouchableOpacity>
@@ -302,11 +333,9 @@ const styles = StyleSheet.create({
   },
   box: {
     borderWidth: 2,
-    borderColor: "#1B4D90",
     marginHorizontal: 3,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#fff",
     borderRadius: 10,
   },
   letter: {
