@@ -49,7 +49,7 @@ export default function Signin({ navigation }) {
     // 🧠 Default credentials
     const adminEmail = "admin@example.com";
     const adminPassword = "admin123";
-    const testEmail = "testuser@example.com";
+    const testEmail = "testuser@gmail.com";
     const testPassword = "test123";
 
     // Simulate auth check
@@ -183,7 +183,7 @@ export default function Signin({ navigation }) {
                   style={styles.okButton}
                   onPress={() => {
                     setShowSuccess(false);
-                    navigation.navigate("Home");
+                    navigation.navigate("GameDashboard");
                   }}
                 >
                   <Text style={styles.okText}>OK</Text>

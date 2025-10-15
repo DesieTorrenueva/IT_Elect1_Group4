@@ -24,7 +24,12 @@ const levels = [
   { word: "ANTHROPOLOGY", hint: "The study of human societies and cultures" },
   { word: "CRYPTOGRAPHY", hint: "The art of writing or solving codes" },
   { word: "THERMODYNAMICS", hint: "The study of heat and energy transfer" },
-  { word: "MICROSCOPY", hint: "Using microscopes to view tiny objects" }
+  { word: "MICROSCOPY", hint: "Using microscopes to view tiny objects" },
+  { word: "ALGORITHM", hint: "A set of rules for solving problems in computing" },
+  { word: "INVESTIGATION", hint: "A detailed examination or inquiry" },
+  { word: "PHILOSOPHY", hint: "The study of knowledge and existence" },
+  { word: "REVOLUTION", hint: "A major change or overthrow of a system" },
+  { word: "EXPERIMENT", hint: "A test done to prove a hypothesis" }
 ];
 
 export default function Expert() {

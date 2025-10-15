@@ -8,7 +8,8 @@ import { useFonts, Poppins_600SemiBold } from "@expo-google-fonts/poppins";
 import HomeScreen from "./HomeScreen";
 import Signin from "./sign/Signin";
 import Signup from "./sign/Signup";
-import ForGuest from "./guest/ForGuest"; // ✅ fixed path — should be relative to App.js
+import ForGuest from "./guest/ForGuest";
+import GameDashboard from "./GameDashboard"; // ✅ Added import
 
 const Stack = createStackNavigator();
 
@@ -39,14 +40,14 @@ export default function App() {
       <Stack.Navigator
         initialRouteName="Home"
         screenOptions={{
-          headerShown: false, // hide header for cleaner UI
+          headerShown: false,
         }}
       >
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="SignIn" component={Signin} />
         <Stack.Screen name="SignUp" component={Signup} />
         <Stack.Screen name="ForGuest" component={ForGuest} />
-        {/* ✅ ForGuest screen added above */}
+        <Stack.Screen name="GameDashboard" component={GameDashboard} />
       </Stack.Navigator>
     </NavigationContainer>
   );
