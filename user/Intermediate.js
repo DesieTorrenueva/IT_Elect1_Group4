@@ -31,7 +31,7 @@ const levels = [
   { word: "VOLCANO", hint: "Erupts with lava and ash" },
   { word: "BRIDGE", hint: "Connects two areas over a river or road" },
   { word: "ROBOT", hint: "A machine that can do tasks automatically" },
-  
+
   { word: "HOSPITAL", hint: "A place where doctors work" },
   { word: "COMPUTER", hint: "Used to browse the internet and play games" },
   { word: "LIBRARY", hint: "A quiet place full of books" },
@@ -118,7 +118,7 @@ export default function Expert() {
       <View style={styles.container}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => navigation.navigate("Home")}
+          onPress={() => navigation.navigate("GameDashboard")}
         >
           <Ionicons name="arrow-back" size={28} color="#333" />
         </TouchableOpacity>
@@ -154,7 +154,7 @@ export default function Expert() {
       {/* 🔙 Back Button */}
       <TouchableOpacity
         style={styles.backButton}
-        onPress={() => navigation.navigate("Home")}
+        onPress={() => navigation.navigate("GameDashboard")}
       >
         <Ionicons name="arrow-back" size={28} color="#333" />
       </TouchableOpacity>

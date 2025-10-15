@@ -118,7 +118,7 @@ export default function Expert() {
       <View style={styles.container}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => navigation.navigate("Home")}
+          onPress={() => navigation.navigate("GameDashboard")}
         >
           <Ionicons name="arrow-back" size={28} color="#333" />
         </TouchableOpacity>
@@ -154,7 +154,7 @@ export default function Expert() {
       {/* 🔙 Back Button */}
       <TouchableOpacity
         style={styles.backButton}
-        onPress={() => navigation.navigate("Home")}
+        onPress={() => navigation.navigate("GameDashboard")}
       >
         <Ionicons name="arrow-back" size={28} color="#333" />
       </TouchableOpacity>

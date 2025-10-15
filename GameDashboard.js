@@ -1,5 +1,13 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, Image, StyleSheet, Platform, StatusBar } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Image,
+  StyleSheet,
+  Platform,
+  StatusBar,
+} from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, FontAwesome5, MaterialIcons } from "@expo/vector-icons";
 
@@ -34,21 +42,30 @@ export default function GameDashboard({ navigation }) {
       </View>
 
       {/* Buttons */}
-      <TouchableOpacity style={styles.button}>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => navigation.navigate("Easy")} // 👈 Navigate to Easy.js
+      >
         <View style={styles.buttonContent}>
           <Ionicons name="musical-notes-outline" size={22} color="#1d3557" />
           <Text style={styles.buttonText}>EASY</Text>
         </View>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.button}>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => navigation.navigate("Intermediate")} // 👈 Navigate to Intermediate.js
+      >
         <View style={styles.buttonContent}>
           <FontAwesome5 name="trophy" size={20} color="#1d3557" />
           <Text style={styles.buttonText}>INTERMEDIATE</Text>
         </View>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.button}>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => navigation.navigate("Expert")} // 👈 Navigate to Expert.js
+      >
         <View style={styles.buttonContent}>
           <Ionicons name="flame-outline" size={24} color="#1d3557" />
           <Text style={styles.buttonText}>EXPERT</Text>
@@ -80,7 +97,7 @@ const styles = StyleSheet.create({
   },
   topBar: {
     position: "absolute",
-    top: Platform.OS === "android" ? StatusBar.currentHeight -15 : 10,
+    top: Platform.OS === "android" ? StatusBar.currentHeight - 30 : 0, // 👆 raised higher
     width: "90%",
     flexDirection: "row",
     justifyContent: "space-between",
@@ -94,7 +111,7 @@ const styles = StyleSheet.create({
   },
   scoreContainer: {
     alignItems: "center",
-    marginTop: 160, // moved up since logo moved higher
+    marginTop: 140, // 👆 moved up slightly since top elements are higher
     marginBottom: 25,
   },
   scoreLabel: {
