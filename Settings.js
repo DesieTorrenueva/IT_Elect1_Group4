@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, ImageBackground } from 'react-native';
+// Siguraduhon nga installed ni sa imong project:
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import FontAwesomeIcon from 'react-native-vector-icons/FontAwesome';
 
@@ -67,14 +68,20 @@ const SettingsModal = ({ isVisible, onClose }) => {
             </TouchableOpacity>
           </View>
 
-          {/* Manage Account Button */}
-          <TouchableOpacity style={styles.manageAccountButton}>
+          {/* ******************************************************************
+            * MANAGE ACCOUNT BUTTON (Gisulod na dinhi) 
+            ******************************************************************
+          */}
+          <TouchableOpacity style={styles.manageAccountButton} onPress={() => console.log('Go to Manage Account')}>
             <FontAwesomeIcon name="user-circle" size={20} color="#fff" />
             <Icon name="cog" size={16} color="#fff" style={styles.cogIcon} />
             <Text style={styles.manageAccountText}>Manage Account</Text>
           </TouchableOpacity>
 
-          {/* Privacy Policy Link */}
+          {/* ******************************************************************
+            * PRIVACY POLICY LINK (Gisulod na dinhi) 
+            ******************************************************************
+          */}
           <TouchableOpacity onPress={() => console.log('Go to Privacy Policy')}>
             <Text style={styles.privacyPolicyText}>Privacy Policy</Text>
           </TouchableOpacity>
@@ -193,6 +200,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#4CB7F5', // Darker blue when active
     borderColor: '#1976D2', // Even darker blue border for active state
   },
+  // 
+  // ******************************************************************
+  // * MANAGE ACCOUNT & PRIVACY POLICY STYLES (Gisulod na dinhi) 
+  // ******************************************************************
+  // 
+
   // Manage Account Button
   manageAccountButton: {
     flexDirection: 'row',
@@ -227,6 +240,10 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
     marginBottom: 30,
   },
+  // 
+  // ******************************************************************
+  // 
+
   // Home Button
   homeButton: {
     width: 60,
@@ -263,4 +280,5 @@ const Settings = () => {
   );
 };
 
-export default Settings; 
+export default Settings;
+                                    
