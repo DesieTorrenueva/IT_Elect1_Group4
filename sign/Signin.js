@@ -21,6 +21,7 @@ import {
   Poppins_600SemiBold,
 } from "@expo-google-fonts/poppins";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function Signin({ navigation }) {
   const [showPassword, setShowPassword] = useState(false);
@@ -29,6 +30,12 @@ export default function Signin({ navigation }) {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  // ✅ Move admin/user credentials to component scope
+  const adminEmail = "admin@gmail.com";
+  const adminPassword = "admindes";
+  const testEmail = "testuser@gmail.com";
+  const testPassword = "test123";
 
   const [fontsLoaded] = useFonts({
     Poppins_400Regular,
@@ -43,28 +50,36 @@ export default function Signin({ navigation }) {
     );
   }
 
-  const handleSignIn = () => {
+  const handleSignIn = async () => {
     setLoading(true);
 
-    // 🧠 Default credentials
-    const adminEmail = "admin@example.com";
-    const adminPassword = "admin123";
-    const testEmail = "testuser@gmail.com";
-    const testPassword = "test123";
-
-    // Simulate auth check
-    setTimeout(() => {
+    setTimeout(async () => {
       setLoading(false);
 
       if (
         (email === adminEmail && password === adminPassword) ||
         (email === testEmail && password === testPassword)
       ) {
+        // Save username locally
+        const username = email === adminEmail ? "Admin" : "Player1";
+        await AsyncStorage.setItem("username", username);
+
         setShowSuccess(true);
       } else {
         Alert.alert("Invalid credentials", "Please check your email and password.");
       }
     }, 1200);
+  };
+
+  const handleSuccess = () => {
+    setShowSuccess(false);
+
+    // Navigate based on user type
+    if (email === adminEmail) {
+      navigation.replace("AdminDashboard");
+    } else {
+      navigation.replace("GameDashboard");
+    }
   };
 
   return (
@@ -81,7 +96,7 @@ export default function Signin({ navigation }) {
             showsVerticalScrollIndicator={false}
             style={{ flex: 1, backgroundColor: "transparent" }}
           >
-            {/* Close (X) Button */}
+            {/* Close Button */}
             <TouchableOpacity
               style={styles.closeButton}
               onPress={() => navigation.navigate("Home")}
@@ -98,7 +113,7 @@ export default function Signin({ navigation }) {
               />
             </View>
 
-            {/* Card */}
+            {/* Sign-in Card */}
             <View style={styles.card}>
               <Text style={styles.subtitle}>SIGN IN TO YOUR ACCOUNT</Text>
 
@@ -138,11 +153,7 @@ export default function Signin({ navigation }) {
                 onPress={handleSignIn}
                 disabled={loading}
               >
-                {loading ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.buttonText}>SUBMIT</Text>
-                )}
+                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>SUBMIT</Text>}
               </TouchableOpacity>
 
               <Text style={styles.signupText}>
@@ -174,18 +185,10 @@ export default function Signin({ navigation }) {
                 />
                 <Text style={styles.modalTitle}>Signing in successfully!</Text>
                 <Text style={styles.modalSubtitle}>
-                  {email === "admin@example.com"
-                    ? "Welcome, Admin 👑"
-                    : "Welcome back!"}
+                  {email === adminEmail ? "Welcome, Admin!" : "Welcome back!"}
                 </Text>
 
-                <TouchableOpacity
-                  style={styles.okButton}
-                  onPress={() => {
-                    setShowSuccess(false);
-                    navigation.navigate("GameDashboard");
-                  }}
-                >
+                <TouchableOpacity style={styles.okButton} onPress={handleSuccess}>
                   <Text style={styles.okText}>OK</Text>
                 </TouchableOpacity>
               </View>

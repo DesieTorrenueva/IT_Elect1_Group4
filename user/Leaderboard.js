@@ -1,19 +1,27 @@
-// user/Leaderboard.js
-import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet, FlatList } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import React, { useState, useEffect } from "react";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { FontAwesome5, Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const sampleData = [
-  { id: "1", name: "Alex", score: 150 },
-  { id: "2", name: "Jamie", score: 120 },
-  { id: "3", name: "Taylor", score: 110 },
-  { id: "4", name: "Riley", score: 100 },
-  { id: "5", name: "Jordan", score: 90 },
-];
+export default function Leaderboard({ navigation }) {
+  const [user, setUser] = useState({ name: "", score: 0 });
 
-export default function Leaderboard() {
-  const navigation = useNavigation();
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const name = await AsyncStorage.getItem("username");
+        const score = await AsyncStorage.getItem("userScore");
+        setUser({
+          name: name || "Player",
+          score: score ? parseInt(score) : 0,
+        });
+      } catch (e) {
+        console.error("Failed to load user data", e);
+      }
+    };
+
+    loadUser();
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -22,22 +30,25 @@ export default function Leaderboard() {
         style={styles.backButton}
         onPress={() => navigation.navigate("GameDashboard")}
       >
-        <Ionicons name="arrow-back" size={28} color="#fff" />
+        <Ionicons name="arrow-back" size={28} color="#FFD700" />
       </TouchableOpacity>
 
-      <Text style={styles.title}>🏆 Leaderboard</Text>
+      {/* Heading */}
+      <Text style={styles.heading}>Leaderboard</Text>
 
-      <FlatList
-        data={sampleData}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item, index }) => (
-          <View style={styles.row}>
-            <Text style={styles.rank}>{index + 1}</Text>
-            <Text style={styles.name}>{item.name}</Text>
-            <Text style={styles.score}>{item.score}</Text>
-          </View>
-        )}
-      />
+      {/* Trophies */}
+      <View style={styles.trophies}>
+        <FontAwesome5 name="trophy" size={50} color="#FFD700" style={styles.trophyIcon} />
+        <FontAwesome5 name="trophy" size={50} color="#C0C0C0" style={styles.trophyIcon} />
+        <FontAwesome5 name="trophy" size={50} color="#CD7F32" style={styles.trophyIcon} />
+      </View>
+
+      {/* Top User */}
+      <View style={styles.userRow}>
+        <Text style={styles.userRank}>1</Text>
+        <Text style={styles.userName}>{user.name}</Text>
+        <Text style={styles.userScore}>{user.score}</Text>
+      </View>
     </View>
   );
 }
@@ -45,31 +56,64 @@ export default function Leaderboard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0b4c85",
-    paddingTop: 60,
+    backgroundColor: "#2c5364", // deep gradient-like blue
     alignItems: "center",
+    paddingTop: 60,
   },
   backButton: {
     position: "absolute",
     top: 40,
     left: 20,
+    padding: 5,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: "#f5d9a4",
-    marginBottom: 20,
+  heading: {
+    fontSize: 36,
+    fontWeight: "bold",
+    color: "#FFD700", // golden heading
+    marginBottom: 25,
+    textShadowColor: "rgba(0,0,0,0.4)",
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 4,
   },
-  row: {
+  trophies: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 30,
+    marginBottom: 40,
+  },
+  trophyIcon: {
+    textShadowColor: "rgba(0,0,0,0.3)",
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
+  },
+  userRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    backgroundColor: "#eadcdcff",
+    backgroundColor: "#f5d9a4", // soft cream color
+    padding: 18,
     width: "85%",
-    padding: 15,
-    marginVertical: 5,
-    borderRadius: 12,
+    borderRadius: 25,
+    marginBottom: 15,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 6,
   },
-  rank: { fontSize: 20, fontWeight: "700", color: "#1d3557" },
-  name: { fontSize: 18, color: "#1d3557", flex: 1, textAlign: "center" },
-  score: { fontSize: 20, fontWeight: "700", color: "#1d3557" },
+  userRank: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#34495E",
+  },
+  userName: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: "#34495E",
+  },
+  userScore: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#34495E",
+  },
 });

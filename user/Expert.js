@@ -10,12 +10,7 @@ import {
   Animated,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
-import {
-  useFonts,
-  Poppins_400Regular,
-  Poppins_600SemiBold,
-} from "@expo-google-fonts/poppins";
+import { useFonts, Poppins_400Regular, Poppins_600SemiBold } from "@expo-google-fonts/poppins";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const { width: screenWidth } = Dimensions.get("window");
@@ -26,13 +21,11 @@ const levels = [
   { word: "CRYPTOGRAPHY", hint: "The art of writing or solving codes" },
   { word: "THERMODYNAMICS", hint: "The study of heat and energy transfer" },
   { word: "MICROSCOPY", hint: "Using microscopes to view tiny objects" },
-
   { word: "ALGORITHM", hint: "A set of rules for solving problems in computing" },
   { word: "INVESTIGATION", hint: "A detailed examination or inquiry" },
   { word: "PHILOSOPHY", hint: "The study of knowledge and existence" },
   { word: "REVOLUTION", hint: "A major change or overthrow of a system" },
   { word: "EXPERIMENT", hint: "A test done to prove a hypothesis" },
-
   { word: "NEUROLOGY", hint: "The branch of medicine that studies the brain" },
   { word: "PHYSICS", hint: "The study of matter, energy, and motion" },
   { word: "DEMOCRACY", hint: "A system of government by the people" },
@@ -40,9 +33,9 @@ const levels = [
   { word: "ENVIRONMENT", hint: "The natural world around us" }
 ];
 
-export default function Expert() {
-  const navigation = useNavigation();
-  const [level, setLevel] = useState(0);
+export default function Expert({ route, navigation }) {
+  const resumeLevel = route.params?.resumeLevel || 0;
+  const [level, setLevel] = useState(resumeLevel);
   const [score, setScore] = useState(0);
   const [userInput, setUserInput] = useState([]);
   const [completed, setCompleted] = useState(false);
@@ -55,13 +48,12 @@ export default function Expert() {
     Poppins_600SemiBold,
   });
 
+  // Load stored score
   useEffect(() => {
     const loadStoredScore = async () => {
       try {
         const storedScore = await AsyncStorage.getItem("userScore");
-        if (storedScore !== null) {
-          setScore(parseInt(storedScore));
-        }
+        if (storedScore !== null) setScore(parseInt(storedScore));
       } catch (error) {
         console.error("Error loading stored score:", error);
       }
@@ -69,15 +61,19 @@ export default function Expert() {
     loadStoredScore();
   }, []);
 
+  // Save current level whenever it changes
+  useEffect(() => {
+    AsyncStorage.setItem("ExpertLevel", level.toString()).catch((e) =>
+      console.error("Error saving level:", e)
+    );
+  }, [level]);
+
   const current = levels[level];
   const wordLetters = current.word.split("");
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
   const totalMargin = (wordLetters.length - 1) * 6;
-  const boxWidth = Math.min(
-    50,
-    (screenWidth - 60 - totalMargin) / wordLetters.length
-  );
+  const boxWidth = Math.min(50, (screenWidth - 60 - totalMargin) / wordLetters.length);
   const boxHeight = boxWidth * 1.2;
 
   const updateStoredScore = async (newScore) => {
@@ -139,34 +135,6 @@ export default function Expert() {
     );
   }
 
-  if (completed) {
-    return (
-      <View style={styles.container}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.navigate("GameDashboard")}
-        >
-          <Ionicons name="arrow-back" size={28} color="#333" />
-        </TouchableOpacity>
-
-        <Image
-          source={require("../assets/logo.png")}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-        <Text style={[styles.title, { fontFamily: "Poppins_600SemiBold" }]}>
-          🎉 Congratulations!
-        </Text>
-        <Text style={[styles.text, { fontFamily: "Poppins_400Regular" }]}>
-          You finished all levels!
-        </Text>
-        <Text style={[styles.text, { fontFamily: "Poppins_400Regular" }]}>
-          Final Score: {score}
-        </Text>
-      </View>
-    );
-  }
-
   const rows = [];
   for (let i = 0; i < alphabet.length; i += 4) {
     rows.push(alphabet.slice(i, i + 4));
@@ -175,6 +143,7 @@ export default function Expert() {
 
   return (
     <View style={styles.container}>
+      {/* BACK BUTTON */}
       <TouchableOpacity
         style={styles.backButton}
         onPress={() => navigation.navigate("GameDashboard")}
@@ -188,84 +157,100 @@ export default function Expert() {
         resizeMode="contain"
       />
 
-      <View style={styles.topInfo}>
-        <Text style={[styles.level, { fontFamily: "Poppins_400Regular" }]}>
-          Level: {level + 1}
-        </Text>
-        <Text style={[styles.score, { fontFamily: "Poppins_400Regular" }]}>
-          Score: {score}
-        </Text>
-      </View>
-
-      <View style={styles.hintContainer}>
-        <Text style={[styles.hint, { fontFamily: "Poppins_400Regular" }]}>
-          {current.hint}
-        </Text>
-      </View>
-
-      <Animated.View
-        style={[
-          styles.wordContainer,
-          { transform: [{ translateX: shakeAnim }] },
-        ]}
-      >
-        {wordLetters.map((_, i) => (
-          <View
-            key={i}
-            style={[
-              styles.box,
-              {
-                width: boxWidth,
-                height: boxHeight,
-                borderColor: wrong ? "#E74C3C" : "#1B4D90",
-                backgroundColor: wrong ? "#FFD6D6" : "#fff",
-              },
-            ]}
-          >
-            <Text
-              style={[
-                styles.letter,
-                { fontFamily: "Poppins_600SemiBold", fontSize: boxWidth * 0.6 },
-              ]}
-            >
-              {userInput[i] || ""}
+      {completed ? (
+        <View style={{ alignItems: "center" }}>
+          <Text style={[styles.title, { fontFamily: "Poppins_600SemiBold" }]}>
+            🎉 Congratulations!
+          </Text>
+          <Text style={[styles.text, { fontFamily: "Poppins_400Regular" }]}>
+            You finished all levels!
+          </Text>
+          <Text style={[styles.text, { fontFamily: "Poppins_400Regular" }]}>
+            Final Score: {score}
+          </Text>
+        </View>
+      ) : (
+        <>
+          <View style={styles.topInfo}>
+            <Text style={[styles.level, { fontFamily: "Poppins_400Regular" }]}>
+              Level: {level + 1}
+            </Text>
+            <Text style={[styles.score, { fontFamily: "Poppins_400Regular" }]}>
+              Score: {score}
             </Text>
           </View>
-        ))}
-      </Animated.View>
 
-      <View style={styles.keyboard}>
-        {rows.map((row, rowIndex) => (
-          <View key={rowIndex} style={styles.row}>
-            {row.map((key) =>
-              key === "Erase" ? (
-                <TouchableOpacity
-                  key={key}
-                  style={styles.eraseKey}
-                  onPress={() => setUserInput(userInput.slice(0, -1))}
-                >
-                  <Ionicons name="backspace-outline" size={26} color="#fff" />
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  key={key}
-                  style={styles.key}
-                  onPress={() => handleGuess(key)}
-                >
-                  <Text
-                    style={[
-                      styles.keyText,
-                      { fontFamily: "Poppins_600SemiBold" },
-                    ]}
-                  >
-                    {key}
-                  </Text>
-                </TouchableOpacity>
-              )
-            )}
+          <View style={styles.hintContainer}>
+            <Text style={[styles.hint, { fontFamily: "Poppins_400Regular" }]}>
+              {current.hint}
+            </Text>
           </View>
-        ))}
-      </View>
+
+          <Animated.View
+            style={[
+              styles.wordContainer,
+              { transform: [{ translateX: shakeAnim }] },
+            ]}
+          >
+            {wordLetters.map((_, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.box,
+                  {
+                    width: boxWidth,
+                    height: boxHeight,
+                    borderColor: wrong ? "#E74C3C" : "#1B4D90",
+                    backgroundColor: wrong ? "#FFD6D6" : "#fff",
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.letter,
+                    { fontFamily: "Poppins_600SemiBold", fontSize: boxWidth * 0.6 },
+                  ]}
+                >
+                  {userInput[i] || ""}
+                </Text>
+              </View>
+            ))}
+          </Animated.View>
+
+          <View style={styles.keyboard}>
+            {rows.map((row, rowIndex) => (
+              <View key={rowIndex} style={styles.row}>
+                {row.map((key) =>
+                  key === "Erase" ? (
+                    <TouchableOpacity
+                      key={key}
+                      style={styles.eraseKey}
+                      onPress={() => setUserInput(userInput.slice(0, -1))}
+                    >
+                      <Ionicons name="backspace-outline" size={26} color="#fff" />
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity
+                      key={key}
+                      style={styles.key}
+                      onPress={() => handleGuess(key)}
+                    >
+                      <Text
+                        style={[
+                          styles.keyText,
+                          { fontFamily: "Poppins_600SemiBold" },
+                        ]}
+                      >
+                        {key}
+                      </Text>
+                    </TouchableOpacity>
+                  )
+                )}
+              </View>
+            ))}
+          </View>
+        </>
+      )}
     </View>
   );
 }

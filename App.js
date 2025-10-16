@@ -9,7 +9,12 @@ import HomeScreen from "./HomeScreen";
 import Signin from "./sign/Signin";
 import Signup from "./sign/Signup";
 import ForGuest from "./guest/ForGuest";
+import AdminDashboard from "./AdminDashboard";
 import GameDashboard from "./GameDashboard";
+
+// 🛠️ Admin Screens
+import Addwordtolevel from "./admin/Addwordtolevel";
+import AdminQuit from "./admin/AdminQuit";
 
 // 🎮 Game Mode Screens
 import Easy from "./user/Easy";
@@ -58,7 +63,11 @@ export default function App() {
         <Stack.Screen name="SignIn" component={Signin} />
         <Stack.Screen name="SignUp" component={Signup} />
         <Stack.Screen name="ForGuest" component={ForGuest} />
+        <Stack.Screen name="AdminDashboard" component={AdminDashboard} /> 
         <Stack.Screen name="GameDashboard" component={GameDashboard} />
+
+        <Stack.Screen name="Addwordtolevel" component={Addwordtolevel} />
+        <Stack.Screen name="AdminQuit" component={AdminQuit} />
 
         {/* 🔹 Game Modes */}
         <Stack.Screen name="Easy" component={Easy} />

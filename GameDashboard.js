@@ -1,24 +1,17 @@
 import React, { useState, useCallback } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  Image,
-  StyleSheet,
-  Platform,
-  StatusBar,
-} from "react-native";
+import { View, Text, TouchableOpacity, Image, StyleSheet, StatusBar, Platform } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, FontAwesome5, MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
-import Quit from "./user/Quit"; // import your Quit modal
+import Setting from "./user/Setting"; // Your updated Setting modal
+import Quit from "./user/Quit";
 
 export default function GameDashboard({ navigation }) {
   const [score, setScore] = useState(0);
-  const [quitVisible, setQuitVisible] = useState(false); // modal visibility
+  const [settingVisible, setSettingVisible] = useState(false); // <-- new state for settings
+  const [quitVisible, setQuitVisible] = useState(false);
 
-  // Load score whenever the screen is focused
   useFocusEffect(
     useCallback(() => {
       const loadScore = async () => {
@@ -33,65 +26,60 @@ export default function GameDashboard({ navigation }) {
     }, [])
   );
 
+  const handleNavigate = async (difficulty) => {
+    try {
+      const storedLevel = await AsyncStorage.getItem(`${difficulty}Level`);
+      navigation.navigate(difficulty, {
+        resumeLevel: storedLevel ? parseInt(storedLevel) : 0,
+      });
+    } catch (e) {
+      console.error("Failed to load last level", e);
+      navigation.navigate(difficulty, { resumeLevel: 0 });
+    }
+  };
+
   return (
     <LinearGradient colors={["#0b4c85", "#dfb487"]} style={styles.gradient}>
       <StatusBar barStyle="light-content" />
 
       {/* Top Bar */}
       <View style={styles.topBar}>
-
-        <Image
-          source={require("./assets/logo.png")}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-
-        <TouchableOpacity onPress={() => console.log("Settings pressed")}>
+        <View style={styles.leftPlaceholder} />
+        <Image source={require("./assets/logo.png")} style={styles.logo} resizeMode="contain" />
+        <TouchableOpacity onPress={() => setSettingVisible(true)}>
           <Ionicons name="settings-outline" size={30} color="#f5d9a4" />
         </TouchableOpacity>
       </View>
 
-      {/* Score Section */}
+      {/* Score */}
       <View style={styles.scoreContainer}>
         <Text style={styles.scoreLabel}>SCORE</Text>
         <Text style={styles.scoreNumber}>{score}</Text>
       </View>
 
-      {/* Buttons */}
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => navigation.navigate("Easy")}
-      >
+      {/* Difficulty Buttons */}
+      <TouchableOpacity style={styles.button} onPress={() => handleNavigate("Easy")}>
         <View style={styles.buttonContent}>
           <Ionicons name="musical-notes-outline" size={22} color="#1d3557" />
           <Text style={styles.buttonText}>EASY</Text>
         </View>
       </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => navigation.navigate("Intermediate")}
-      >
+      <TouchableOpacity style={styles.button} onPress={() => handleNavigate("Intermediate")}>
         <View style={styles.buttonContent}>
           <FontAwesome5 name="trophy" size={20} color="#1d3557" />
           <Text style={styles.buttonText}>INTERMEDIATE</Text>
         </View>
       </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => navigation.navigate("Expert")}
-      >
+      <TouchableOpacity style={styles.button} onPress={() => handleNavigate("Expert")}>
         <View style={styles.buttonContent}>
           <Ionicons name="flame-outline" size={24} color="#1d3557" />
           <Text style={styles.buttonText}>EXPERT</Text>
         </View>
       </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => navigation.navigate("Leaderboard")}
-      >
+      <TouchableOpacity style={styles.button} onPress={() => navigation.navigate("Leaderboard")}>
         <View style={styles.buttonContent}>
           <FontAwesome5 name="medal" size={20} color="#1d3557" />
           <Text style={styles.buttonText}>LEADERBOARD</Text>
@@ -99,24 +87,27 @@ export default function GameDashboard({ navigation }) {
       </TouchableOpacity>
 
       {/* Quit Button */}
-      <TouchableOpacity
-        style={styles.quitButton}
-        onPress={() => setQuitVisible(true)} // show modal
-      >
+      <TouchableOpacity style={styles.quitButton} onPress={() => setQuitVisible(true)}>
         <View style={styles.buttonContent}>
           <MaterialIcons name="exit-to-app" size={22} color="#fff" />
           <Text style={styles.quitText}>QUIT</Text>
         </View>
       </TouchableOpacity>
 
-      {/* Quit Modal */}
+      {/* Modals */}
       <Quit
         visible={quitVisible}
-        onClose={() => setQuitVisible(false)} // close modal
+        onClose={() => setQuitVisible(false)}
         onConfirm={() => {
           setQuitVisible(false);
-          navigation.navigate("Home"); // navigate home
+          navigation.navigate("Home");
         }}
+      />
+
+      <Setting
+        isVisible={settingVisible}  // <-- pass the visibility
+        onClose={() => setSettingVisible(false)} // <-- handle closing
+        navigation={navigation}      // <-- pass navigation prop
       />
     </LinearGradient>
   );
