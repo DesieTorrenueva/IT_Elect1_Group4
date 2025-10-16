@@ -87,9 +87,9 @@ const styles = StyleSheet.create({
   heading: {
     fontSize: 32,
     fontWeight: "bold",
-    color: "#f5d9a4",
-    marginTop: 380,
-    marginBottom: 30,
+    color: "#e3e1dfff",
+    marginTop: 370,
+    marginBottom: 80,
   },
   button: {
     width: "75%",

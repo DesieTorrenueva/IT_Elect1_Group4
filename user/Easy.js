@@ -27,9 +27,19 @@ const levels = [
   { word: "BRUSH", hint: "Used to comb hair or clean surfaces" },
   { word: "PHONE", hint: "Used to call or text people" },
   { word: "TABLE", hint: "Furniture where you put things" },
+  { word: "HOUSE", hint: "A place where people live" },
+  { word: "CHAIR", hint: "Something you sit on" },
+  { word: "CLOCK", hint: "Tells the time" },
+  { word: "BOOK", hint: "You read this for knowledge or fun" },
+  { word: "TRAIN", hint: "Runs on tracks and carries passengers" },
   { word: "CLOUD", hint: "White and floats in the sky" },
   { word: "RIVER", hint: "Flows with water toward the sea" },
   { word: "MUSIC", hint: "You listen to this for entertainment" },
+  { word: "LIGHT", hint: "Helps you see in the dark" },
+  { word: "DOG", hint: "A loyal animal and common pet" },
+  { word: "CAR", hint: "A vehicle with four wheels" },
+  { word: "BAG", hint: "Used to carry personal items" },
+  { word: "STAR", hint: "Shines brightly in the night sky" }
 ];
 
 export default function Easy({ route, navigation }) {

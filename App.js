@@ -4,6 +4,9 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import { useFonts, Poppins_600SemiBold } from "@expo-google-fonts/poppins";
 
+// 🌀 Splash Screen
+import SplashScreen from "./SplashScreen";
+
 // 🏠 Main Screens
 import HomeScreen from "./HomeScreen";
 import Signin from "./sign/Signin";
@@ -33,7 +36,7 @@ export default function App() {
     Poppins_600SemiBold,
   });
 
-  // Loading indicator while font loads
+  // Show loader while fonts load
   if (!fontsLoaded) {
     return (
       <View
@@ -52,29 +55,33 @@ export default function App() {
   return (
     <NavigationContainer>
       <Stack.Navigator
-        initialRouteName="Home"
+        initialRouteName="SplashScreen"
         screenOptions={{
-          headerShown: false, // hides top header for custom UIs
-          animationEnabled: true, // smoother screen transitions
+          headerShown: false, // hides default headers
+          animationEnabled: true, // smooth transitions
         }}
       >
+        {/* 🌀 Splash Screen */}
+        <Stack.Screen name="SplashScreen" component={SplashScreen} />
+
         {/* 🔹 Main Screens */}
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="SignIn" component={Signin} />
         <Stack.Screen name="SignUp" component={Signup} />
         <Stack.Screen name="ForGuest" component={ForGuest} />
-        <Stack.Screen name="AdminDashboard" component={AdminDashboard} /> 
+        <Stack.Screen name="AdminDashboard" component={AdminDashboard} />
         <Stack.Screen name="GameDashboard" component={GameDashboard} />
 
+        {/* 🛠️ Admin Screens */}
         <Stack.Screen name="Addwordtolevel" component={Addwordtolevel} />
         <Stack.Screen name="AdminQuit" component={AdminQuit} />
 
-        {/* 🔹 Game Modes */}
+        {/* 🎮 Game Modes */}
         <Stack.Screen name="Easy" component={Easy} />
         <Stack.Screen name="Intermediate" component={Intermediate} />
         <Stack.Screen name="Expert" component={Expert} />
 
-        {/* 🔹 Extras */}
+        {/* 🏆 Other Screens */}
         <Stack.Screen name="Leaderboard" component={Leaderboard} />
         <Stack.Screen name="Quit" component={Quit} />
       </Stack.Navigator>

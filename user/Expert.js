@@ -29,6 +29,11 @@ const levels = [
   { word: "NEUROLOGY", hint: "The branch of medicine that studies the brain" },
   { word: "PHYSICS", hint: "The study of matter, energy, and motion" },
   { word: "DEMOCRACY", hint: "A system of government by the people" },
+  { word: "INNOVATION", hint: "A new idea or method that changes things" },
+  { word: "DETERMINATION", hint: "Strong will to achieve something" },
+  { word: "ASTRONOMY", hint: "The scientific study of celestial objects" },
+  { word: "ARCHAEOLOGY", hint: "The study of human history through artifacts" },
+  { word: "STRATEGY", hint: "A plan to achieve a goal" },
   { word: "ARCHITECTURE", hint: "The art and science of designing buildings" },
   { word: "ENVIRONMENT", hint: "The natural world around us" }
 ];
