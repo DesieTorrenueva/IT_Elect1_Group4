@@ -1,15 +1,23 @@
 import React, { useState, useCallback } from "react";
-import { View, Text, TouchableOpacity, Image, StyleSheet, StatusBar, Platform } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Image,
+  StyleSheet,
+  StatusBar,
+  Platform,
+} from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, FontAwesome5, MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
-import Setting from "./user/Setting"; // Your updated Setting modal
+import Setting from "./user/Setting";
 import Quit from "./user/Quit";
 
 export default function GameDashboard({ navigation }) {
   const [score, setScore] = useState(0);
-  const [settingVisible, setSettingVisible] = useState(false); // <-- new state for settings
+  const [settingVisible, setSettingVisible] = useState(false);
   const [quitVisible, setQuitVisible] = useState(false);
 
   useFocusEffect(
@@ -45,7 +53,11 @@ export default function GameDashboard({ navigation }) {
       {/* Top Bar */}
       <View style={styles.topBar}>
         <View style={styles.leftPlaceholder} />
-        <Image source={require("./assets/logo.png")} style={styles.logo} resizeMode="contain" />
+        <Image
+          source={require("./assets/logo.png")}
+          style={styles.logo}
+          resizeMode="contain"
+        />
         <TouchableOpacity onPress={() => setSettingVisible(true)}>
           <Ionicons name="settings-outline" size={30} color="#f5d9a4" />
         </TouchableOpacity>
@@ -57,40 +69,55 @@ export default function GameDashboard({ navigation }) {
         <Text style={styles.scoreNumber}>{score}</Text>
       </View>
 
-      {/* Difficulty Buttons */}
-      <TouchableOpacity style={styles.button} onPress={() => handleNavigate("Easy")}>
+      {/* Buttons */}
+      <TouchableOpacity
+        style={[styles.button, styles.easyButton]}
+        onPress={() => handleNavigate("Easy")}
+      >
         <View style={styles.buttonContent}>
-          <Ionicons name="musical-notes-outline" size={22} color="#1d3557" />
+          <Ionicons name="musical-notes-outline" size={22} color="#fff" />
           <Text style={styles.buttonText}>EASY</Text>
         </View>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.button} onPress={() => handleNavigate("Intermediate")}>
+      <TouchableOpacity
+        style={[styles.button, styles.intermediateButton]}
+        onPress={() => handleNavigate("Intermediate")}
+      >
         <View style={styles.buttonContent}>
-          <FontAwesome5 name="trophy" size={20} color="#1d3557" />
+          <FontAwesome5 name="trophy" size={20} color="#fff" />
           <Text style={styles.buttonText}>INTERMEDIATE</Text>
         </View>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.button} onPress={() => handleNavigate("Expert")}>
+      <TouchableOpacity
+        style={[styles.button, styles.expertButton]}
+        onPress={() => handleNavigate("Expert")}
+      >
         <View style={styles.buttonContent}>
-          <Ionicons name="flame-outline" size={24} color="#1d3557" />
+          <Ionicons name="flame-outline" size={24} color="#fff" />
           <Text style={styles.buttonText}>EXPERT</Text>
         </View>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.button} onPress={() => navigation.navigate("Leaderboard")}>
+      <TouchableOpacity
+        style={[styles.button, styles.leaderboardButton]}
+        onPress={() => navigation.navigate("Leaderboard")}
+      >
         <View style={styles.buttonContent}>
-          <FontAwesome5 name="medal" size={20} color="#1d3557" />
+          <FontAwesome5 name="medal" size={20} color="#fff" />
           <Text style={styles.buttonText}>LEADERBOARD</Text>
         </View>
       </TouchableOpacity>
 
       {/* Quit Button */}
-      <TouchableOpacity style={styles.quitButton} onPress={() => setQuitVisible(true)}>
+      <TouchableOpacity
+        style={[styles.button, styles.quitButton]}
+        onPress={() => setQuitVisible(true)}
+      >
         <View style={styles.buttonContent}>
           <MaterialIcons name="exit-to-app" size={22} color="#fff" />
-          <Text style={styles.quitText}>QUIT</Text>
+          <Text style={styles.buttonText}>QUIT</Text>
         </View>
       </TouchableOpacity>
 
@@ -105,13 +132,14 @@ export default function GameDashboard({ navigation }) {
       />
 
       <Setting
-        isVisible={settingVisible}  // <-- pass the visibility
-        onClose={() => setSettingVisible(false)} // <-- handle closing
-        navigation={navigation}      // <-- pass navigation prop
+        isVisible={settingVisible}
+        onClose={() => setSettingVisible(false)}
+        navigation={navigation}
       />
     </LinearGradient>
   );
 }
+
 const styles = StyleSheet.create({
   gradient: {
     flex: 1,
@@ -128,7 +156,7 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   leftPlaceholder: {
-    width: 30, // same width as the settings icon to perfectly center logo
+    width: 30,
   },
   logo: {
     width: 95,
@@ -156,12 +184,11 @@ const styles = StyleSheet.create({
   },
   button: {
     width: "75%",
-    backgroundColor: "#eadcdcff",
     paddingVertical: 16,
     borderRadius: 18,
     alignItems: "center",
     marginVertical: 8,
-    elevation: 3,
+    elevation: 4,
   },
   buttonContent: {
     flexDirection: "row",
@@ -172,19 +199,24 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: 20,
     fontWeight: "700",
-    color: "#536b8eff",
+    color: "#fff",
+  },
+
+  // 🎨 Individual button colors
+  easyButton: {
+    backgroundColor: "#4cb771ff",
+  },
+  intermediateButton: {
+    backgroundColor: "#c2a44dff", 
+  },
+  expertButton: {
+    backgroundColor: "#aa2fb0ff", 
+  },
+  leaderboardButton: {
+    backgroundColor: "#3a6b94ff", 
   },
   quitButton: {
-    width: "75%",
-    backgroundColor: "#1565C0",
-    paddingVertical: 16,
-    borderRadius: 18,
-    alignItems: "center",
+    backgroundColor: "#9a1b1bff", 
     marginTop: 18,
-  },
-  quitText: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#fff",
   },
 });

@@ -16,7 +16,7 @@ export default function AdminDashboard({ navigation }) {
   const [quitVisible, setQuitVisible] = useState(false);
 
   return (
-    <LinearGradient colors={["#0b4c85", "#dfb487"]} style={styles.gradient}>
+    <LinearGradient colors={["#102c44ff", "#8c673fff"]} style={styles.gradient}>
       <StatusBar barStyle="light-content" />
 
       {/* Top Bar with centered logo */}

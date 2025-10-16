@@ -30,7 +30,7 @@ export default function Leaderboard({ navigation }) {
         style={styles.backButton}
         onPress={() => navigation.navigate("GameDashboard")}
       >
-        <Ionicons name="arrow-back" size={28} color="#FFD700" />
+        <Ionicons name="arrow-back" size={28} color="#a0b597ff" />
       </TouchableOpacity>
 
       {/* Heading */}
@@ -69,7 +69,7 @@ const styles = StyleSheet.create({
   heading: {
     fontSize: 36,
     fontWeight: "bold",
-    color: "#FFD700", // golden heading
+    color: "#c6cd46ff", // golden heading
     marginBottom: 25,
     textShadowColor: "rgba(0,0,0,0.4)",
     textShadowOffset: { width: 2, height: 2 },
