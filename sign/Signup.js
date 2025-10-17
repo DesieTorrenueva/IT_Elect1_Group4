@@ -47,7 +47,7 @@ export default function Signup({ navigation }) {
   const handleSignUp = () => {
     // ✅ Check for empty fields
     if (!username.trim() || !email.trim() || !password.trim()) {
-      Alert.alert("Missing Information", "Please fill in all required fields.");
+      Alert.alert("Missing Information", "Please fill in all the fields.");
       return;
     }
 

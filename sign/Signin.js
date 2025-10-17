@@ -51,25 +51,32 @@ export default function Signin({ navigation }) {
   }
 
   const handleSignIn = async () => {
-    setLoading(true);
+  // ✅ Check if email or password is empty
+  if (!email.trim() || !password.trim()) {
+    Alert.alert("Missing Information", "Please fill in your information.");
+    return; // stop the function
+  }
 
-    setTimeout(async () => {
-      setLoading(false);
+  setLoading(true);
 
-      if (
-        (email === adminEmail && password === adminPassword) ||
-        (email === testEmail && password === testPassword)
-      ) {
-        // Save username locally
-        const username = email === adminEmail ? "Admin" : "Player1";
-        await AsyncStorage.setItem("username", username);
+  setTimeout(async () => {
+    setLoading(false);
 
-        setShowSuccess(true);
-      } else {
-        Alert.alert("Invalid credentials", "Please check your email and password.");
-      }
-    }, 1200);
-  };
+    if (
+      (email === adminEmail && password === adminPassword) ||
+      (email === testEmail && password === testPassword)
+    ) {
+      // Save username locally
+      const username = email === adminEmail ? "Admin" : "Player1";
+      await AsyncStorage.setItem("username", username);
+
+      setShowSuccess(true);
+    } else {
+      Alert.alert("Invalid credentials", "Please check your email and password.");
+    }
+  }, 1200);
+};
+
 
   const handleSuccess = () => {
     setShowSuccess(false);
