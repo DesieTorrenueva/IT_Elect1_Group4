@@ -125,6 +125,7 @@ export default function Signin({ navigation }) {
                 autoCapitalize="none"
                 keyboardType="email-address"
                 style={styles.input}
+                required
               />
 
               <View style={styles.passwordContainer}>
@@ -135,6 +136,7 @@ export default function Signin({ navigation }) {
                   value={password}
                   onChangeText={setPassword}
                   style={[styles.input, { flex: 1, marginBottom: 0, borderWidth: 0 }]}
+                  required
                 />
                 <TouchableOpacity
                   onPress={() => setShowPassword(!showPassword)}

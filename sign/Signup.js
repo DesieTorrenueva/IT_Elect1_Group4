@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -24,6 +25,11 @@ import { Ionicons } from "@expo/vector-icons";
 export default function Signup({ navigation }) {
   const [showPassword, setShowPassword] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+
+  // 🧩 Input States
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   const [fontsLoaded] = useFonts({
     Poppins_400Regular,
@@ -39,6 +45,20 @@ export default function Signup({ navigation }) {
   }
 
   const handleSignUp = () => {
+    // ✅ Check for empty fields
+    if (!username.trim() || !email.trim() || !password.trim()) {
+      Alert.alert("Missing Information", "Please fill in all required fields.");
+      return;
+    }
+
+    // ✅ (Optional) Basic email format check
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      Alert.alert("Invalid Email", "Please enter a valid email address.");
+      return;
+    }
+
+    // If all good
     setShowSuccess(true);
   };
 
@@ -54,7 +74,6 @@ export default function Signup({ navigation }) {
             contentContainerStyle={styles.scrollContainer}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
-            style={{ flex: 1, backgroundColor: "transparent" }}
           >
             {/* Close (X) Button */}
             <TouchableOpacity
@@ -81,6 +100,8 @@ export default function Signup({ navigation }) {
                 placeholder="USERNAME"
                 placeholderTextColor="#999"
                 style={styles.input}
+                value={username}
+                onChangeText={setUsername}
               />
 
               <TextInput
@@ -88,6 +109,8 @@ export default function Signup({ navigation }) {
                 placeholderTextColor="#999"
                 keyboardType="email-address"
                 style={styles.input}
+                value={email}
+                onChangeText={setEmail}
               />
 
               <View style={styles.passwordContainer}>
@@ -96,6 +119,8 @@ export default function Signup({ navigation }) {
                   placeholderTextColor="#999"
                   secureTextEntry={!showPassword}
                   style={[styles.input, { flex: 1, marginBottom: 0, borderWidth: 0 }]}
+                  value={password}
+                  onChangeText={setPassword}
                 />
                 <TouchableOpacity
                   onPress={() => setShowPassword(!showPassword)}
@@ -140,7 +165,9 @@ export default function Signup({ navigation }) {
                   color="#1E90FF"
                   style={{ marginBottom: 10 }}
                 />
-                <Text style={styles.modalTitle}>Account created successfully!</Text>
+                <Text style={styles.modalTitle}>
+                  Account created successfully!
+                </Text>
                 <Text style={styles.modalSubtitle}>
                   Welcome! You can now sign in.
                 </Text>
@@ -164,20 +191,14 @@ export default function Signup({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  gradient: {
-    flex: 1,
-  },
+  gradient: { flex: 1 },
   scrollContainer: {
     flexGrow: 1,
     justifyContent: "center",
     alignItems: "center",
     paddingVertical: 40,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
+  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
   closeButton: {
     position: "absolute",
     top: 15,
@@ -188,14 +209,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   logoContainer: {
-    marginTop: -60, // pushes logo higher
+    marginTop: -60,
     marginBottom: 10,
     alignItems: "center",
   },
-  logo: {
-    width: 300,
-    height: 300,
-  },
+  logo: { width: 300, height: 300 },
   card: {
     width: "85%",
     backgroundColor: "rgba(255, 255, 255, 0.9)",
@@ -236,9 +254,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#ddd",
   },
-  eyeIcon: {
-    paddingHorizontal: 10,
-  },
+  eyeIcon: { paddingHorizontal: 10 },
   button: {
     width: "100%",
     height: 50,
