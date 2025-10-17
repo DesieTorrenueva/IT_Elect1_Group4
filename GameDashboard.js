@@ -12,12 +12,12 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, FontAwesome5, MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
-import Setting from "./user/Setting";
+//import Setting from "./user/Setting";
 import Quit from "./user/Quit";
 
 export default function GameDashboard({ navigation }) {
   const [score, setScore] = useState(0);
-  const [settingVisible, setSettingVisible] = useState(false);
+  //const [settingVisible, setSettingVisible] = useState(false);
   const [quitVisible, setQuitVisible] = useState(false);
 
   useFocusEffect(
@@ -58,9 +58,11 @@ export default function GameDashboard({ navigation }) {
           style={styles.logo}
           resizeMode="contain"
         />
+       {/*
         <TouchableOpacity onPress={() => setSettingVisible(true)}>
           <Ionicons name="settings-outline" size={30} color="#f5d9a4" />
         </TouchableOpacity>
+        */}
       </View>
 
       {/* Score */}
@@ -130,12 +132,13 @@ export default function GameDashboard({ navigation }) {
           navigation.navigate("Home");
         }}
       />
-
+{/*
       <Setting
         isVisible={settingVisible}
         onClose={() => setSettingVisible(false)}
         navigation={navigation}
       />
+      */}
     </LinearGradient>
   );
 }
@@ -148,11 +151,10 @@ const styles = StyleSheet.create({
   },
   topBar: {
     position: "absolute",
-    top: Platform.OS === "android" ? StatusBar.currentHeight - 15 : 10,
-    width: "90%",
-    flexDirection: "row",
-    justifyContent: "space-between",
+    top: Platform.OS === "android" ? (StatusBar.currentHeight || 0) + 10 : 40,
+    width: "100%",
     alignItems: "center",
+    justifyContent: "center",
     zIndex: 10,
   },
   leftPlaceholder: {
