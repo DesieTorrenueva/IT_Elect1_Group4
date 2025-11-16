@@ -10,20 +10,28 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
-import AdminQuit from "./admin/AdminQuit"; // Adjust path if needed
+import AdminQuit from "../admin/AdminQuit"; // Modal for quit
+import { CommonActions } from "@react-navigation/native"; // safe navigation dispatch
 
 export default function AdminDashboard({ navigation }) {
   const [quitVisible, setQuitVisible] = useState(false);
+
+  const navigateToAddWord = () => {
+    // Safe navigation to Addwordtolevel screen
+    navigation.dispatch(
+      CommonActions.navigate({ name: "Addwordtolevel" })
+    );
+  };
 
   return (
     <LinearGradient colors={["#102c44ff", "#8c673fff"]} style={styles.gradient}>
       <StatusBar barStyle="light-content" />
 
-      {/* Top Bar with centered logo */}
+      {/* Top Bar with Logo */}
       <View style={styles.topBar}>
         <View style={styles.leftPlaceholder} />
         <Image
-          source={require("./assets/logo.png")} // adjust path if needed
+          source={require("../assets/logo.png")}
           style={styles.logo}
           resizeMode="contain"
         />
@@ -34,20 +42,14 @@ export default function AdminDashboard({ navigation }) {
       <Text style={styles.heading}>Hello, ADMIN!</Text>
 
       {/* Buttons */}
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => navigation.navigate("Addwordtolevel")} // Navigate to AddWord screen
-      >
+      <TouchableOpacity style={styles.button} onPress={navigateToAddWord}>
         <View style={styles.buttonContent}>
           <FontAwesome5 name="plus-circle" size={22} color="#1d3557" />
           <Text style={styles.buttonText}>ADD WORD TO LEVEL</Text>
         </View>
       </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.quitButton}
-        onPress={() => setQuitVisible(true)}
-      >
+      <TouchableOpacity style={styles.quitButton} onPress={() => setQuitVisible(true)}>
         <View style={styles.buttonContent}>
           <MaterialIcons name="exit-to-app" size={22} color="#fff" />
           <Text style={styles.quitText}>QUIT</Text>
@@ -75,7 +77,7 @@ const styles = StyleSheet.create({
   },
   topBar: {
     position: "absolute",
-    top: Platform.OS === "android" ? StatusBar.currentHeight - 15 : 10,
+    top: Platform.OS === "android" ? StatusBar.currentHeight + 10 : 40,
     width: "90%",
     flexDirection: "row",
     justifyContent: "space-between",

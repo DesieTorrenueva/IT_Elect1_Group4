@@ -8,16 +8,24 @@ import {
   SafeAreaView,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { MaterialIcons, FontAwesome } from "@expo/vector-icons";
+import { MaterialIcons, FontAwesome, Entypo } from "@expo/vector-icons";
 
 export default function HomeScreen({ navigation }) {
   return (
     <LinearGradient colors={["#0b4c85ff", "#dfb487ff"]} style={styles.container}>
       <SafeAreaView style={styles.innerContainer}>
+        {/* Help Button */}
+        <TouchableOpacity
+          style={styles.helpButton}
+          onPress={() => navigation.navigate("Help")} // replace with your help screen
+        >
+          <Text style={styles.helpText}>?</Text>
+        </TouchableOpacity>
+
         {/* Logo */}
         <View style={styles.logoContainer}>
           <Image
-            source={require("./assets/logo.png")}
+            source={require("../assets/logo.png")}
             style={styles.logo}
             resizeMode="contain"
           />
@@ -27,10 +35,9 @@ export default function HomeScreen({ navigation }) {
         <View style={styles.buttonsContainer}>
           {/* Play as Guest */}
           <TouchableOpacity
-  style={[styles.button, styles.guestButton]}
-  onPress={() => navigation.navigate("ForGuest")} // ✅ navigate to ForGuest screen
->
-
+            style={[styles.button, styles.guestButton]}
+            onPress={() => navigation.navigate("ForGuest")}
+          >
             <FontAwesome name="user-secret" size={22} color="#000" />
             <Text style={[styles.buttonText, styles.darkText, styles.poppinsText]}>
               PLAY AS GUEST
@@ -75,6 +82,26 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+  },
+  helpButton: {
+    position: "absolute",
+    top: 40,
+    left: 20,
+    backgroundColor: "#fff",
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  helpText: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "#0b4c85",
   },
   logoContainer: {
     alignItems: "center",

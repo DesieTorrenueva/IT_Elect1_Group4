@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,59 +7,114 @@ import {
   StyleSheet,
   Image,
   ActivityIndicator,
-  Modal,
+  Alert,
+  ScrollView,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
-  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import {
-  useFonts,
-  Poppins_400Regular,
-  Poppins_600SemiBold,
-} from "@expo-google-fonts/poppins";
+import { useFonts, Poppins_400Regular, Poppins_600SemiBold } from "@expo-google-fonts/poppins";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+// SQLite
+import * as SQLite from "expo-sqlite";
+let db = null;
+if (SQLite.openDatabase) {
+  db = SQLite.openDatabase("users.db");
+} else {
+  console.log("SQLite not available, will use AsyncStorage fallback");
+}
 
 export default function Signup({ navigation }) {
-  const [showPassword, setShowPassword] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
-
-  // 🧩 Input States
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const [fontsLoaded] = useFonts({
-    Poppins_400Regular,
-    Poppins_600SemiBold,
-  });
+  const [fontsLoaded] = useFonts({ Poppins_400Regular, Poppins_600SemiBold });
 
-  if (!fontsLoaded) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#1E90FF" />
-      </View>
-    );
-  }
+  useEffect(() => {
+    if (db) {
+      db.transaction(tx => {
+        tx.executeSql(
+          `CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE,
+            email TEXT UNIQUE,
+            password TEXT
+          );`
+        );
+      });
+    }
+  }, []);
 
-  const handleSignUp = () => {
-    // ✅ Check for empty fields
+  if (!fontsLoaded) return (
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color="#1E90FF" />
+    </View>
+  );
+
+  const handleSignUp = async () => {
     if (!username.trim() || !email.trim() || !password.trim()) {
-      Alert.alert("Missing Information", "Please fill in all the fields.");
+      Alert.alert("Missing Information", "Please fill in all fields.");
       return;
     }
 
-    // ✅ (Optional) Basic email format check
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       Alert.alert("Invalid Email", "Please enter a valid email address.");
       return;
     }
 
-    // If all good
-    setShowSuccess(true);
+    setLoading(true);
+
+    try {
+      if (db) {
+        // Use SQLite
+        db.transaction(tx => {
+          tx.executeSql(
+            "INSERT INTO users (username, email, password) VALUES (?, ?, ?)",
+            [username, email, password],
+            (_, result) => {
+              setLoading(false);
+              Alert.alert("Success", "Account created successfully!", [
+                { text: "OK", onPress: () => navigation.navigate("SignIn") },
+              ]);
+            },
+            (_, error) => {
+              setLoading(false);
+              console.log("SQLite insert error:", error);
+              Alert.alert("Error", "Username or email already exists.");
+              return true;
+            }
+          );
+        });
+      } else {
+        // Fallback: AsyncStorage
+        const existingUsersJSON = await AsyncStorage.getItem("users");
+        const existingUsers = existingUsersJSON ? JSON.parse(existingUsersJSON) : [];
+
+        if (existingUsers.some(u => u.username === username || u.email === email)) {
+          setLoading(false);
+          Alert.alert("Error", "Username or email already exists.");
+          return;
+        }
+
+        const newUser = { username, email, password };
+        await AsyncStorage.setItem("users", JSON.stringify([...existingUsers, newUser]));
+        setLoading(false);
+        Alert.alert("Success", "Account created successfully!", [
+          { text: "OK", onPress: () => navigation.navigate("SignIn") },
+        ]);
+      }
+    } catch (error) {
+      setLoading(false);
+      console.log("Signup error:", error);
+      Alert.alert("Error", "Signup failed. Please try again.");
+    }
   };
 
   return (
@@ -70,29 +125,15 @@ export default function Signup({ navigation }) {
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           keyboardVerticalOffset={Platform.OS === "ios" ? 0 : -80}
         >
-          <ScrollView
-            contentContainerStyle={styles.scrollContainer}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            {/* Close (X) Button */}
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => navigation.navigate("Home")}
-            >
+          <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
+            <TouchableOpacity style={styles.closeButton} onPress={() => navigation.navigate("Home")}>
               <Ionicons name="close" size={28} color="#fff" />
             </TouchableOpacity>
 
-            {/* Logo */}
             <View style={styles.logoContainer}>
-              <Image
-                source={require("../assets/logo.png")}
-                style={styles.logo}
-                resizeMode="contain"
-              />
+              <Image source={require("../assets/logo.png")} style={styles.logo} resizeMode="contain" />
             </View>
 
-            {/* Card */}
             <View style={styles.card}>
               <Text style={styles.subtitle}>CREATE YOUR ACCOUNT</Text>
 
@@ -122,73 +163,30 @@ export default function Signup({ navigation }) {
                   value={password}
                   onChangeText={setPassword}
                 />
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                  style={styles.eyeIcon}
-                >
-                  <Ionicons
-                    name={showPassword ? "eye-off-outline" : "eye-outline"}
-                    size={22}
-                    color="#555"
-                  />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
+                  <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={22} color="#555" />
                 </TouchableOpacity>
               </View>
 
-              <TouchableOpacity style={styles.button} onPress={handleSignUp}>
-                <Text style={styles.buttonText}>SIGN UP</Text>
+              <TouchableOpacity style={[styles.button, loading && { opacity: 0.7 }]} onPress={handleSignUp} disabled={loading}>
+                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>SIGN UP</Text>}
               </TouchableOpacity>
 
               <Text style={styles.signupText}>
                 Already have an account?{" "}
-                <Text
-                  style={styles.signupLink}
-                  onPress={() => navigation.navigate("SignIn")}
-                >
+                <Text style={styles.signupLink} onPress={() => navigation.navigate("SignIn")}>
                   Sign in
                 </Text>
               </Text>
             </View>
           </ScrollView>
-
-          {/* Success Modal */}
-          <Modal
-            transparent
-            animationType="fade"
-            visible={showSuccess}
-            onRequestClose={() => setShowSuccess(false)}
-          >
-            <View style={styles.modalOverlay}>
-              <View style={styles.modalCard}>
-                <Ionicons
-                  name="checkmark-circle-outline"
-                  size={64}
-                  color="#1E90FF"
-                  style={{ marginBottom: 10 }}
-                />
-                <Text style={styles.modalTitle}>
-                  Account created successfully!
-                </Text>
-                <Text style={styles.modalSubtitle}>
-                  Welcome! You can now sign in.
-                </Text>
-
-                <TouchableOpacity
-                  style={styles.okButton}
-                  onPress={() => {
-                    setShowSuccess(false);
-                    navigation.navigate("SignIn");
-                  }}
-                >
-                  <Text style={styles.okText}>OK</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </Modal>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </LinearGradient>
   );
 }
+
+
 
 const styles = StyleSheet.create({
   gradient: { flex: 1 },

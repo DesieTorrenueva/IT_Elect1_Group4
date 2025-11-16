@@ -10,42 +10,18 @@ import {
   Animated,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import {
-  useFonts,
-  Poppins_400Regular,
-  Poppins_600SemiBold,
-} from "@expo-google-fonts/poppins";
+import { useFonts, Poppins_400Regular, Poppins_600SemiBold } from "@expo-google-fonts/poppins";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const { width: screenWidth } = Dimensions.get("window");
 
-const levels = [
-  { word: "BROOM", hint: "Used to sweep the floor" },
-  { word: "MIRROR", hint: "Reflects your image" },
-  { word: "BLANKET", hint: "Keeps you warm while sleeping" },
-  { word: "GARDEN", hint: "Where flowers and plants grow" },
-  { word: "BRUSH", hint: "Used to comb hair or clean surfaces" },
-  { word: "PHONE", hint: "Used to call or text people" },
-  { word: "TABLE", hint: "Furniture where you put things" },
-  { word: "HOUSE", hint: "A place where people live" },
-  { word: "CHAIR", hint: "Something you sit on" },
-  { word: "CLOCK", hint: "Tells the time" },
-  { word: "BOOK", hint: "You read this for knowledge or fun" },
-  { word: "TRAIN", hint: "Runs on tracks and carries passengers" },
-  { word: "CLOUD", hint: "White and floats in the sky" },
-  { word: "RIVER", hint: "Flows with water toward the sea" },
-  { word: "MUSIC", hint: "You listen to this for entertainment" },
-  { word: "LIGHT", hint: "Helps you see in the dark" },
-  { word: "DOG", hint: "A loyal animal and common pet" },
-  { word: "CAR", hint: "A vehicle with four wheels" },
-  { word: "BAG", hint: "Used to carry personal items" },
-  { word: "STAR", hint: "Shines brightly in the night sky" }
-];
-
 export default function Easy({ route, navigation }) {
-  const resumeLevel = route.params?.resumeLevel || 0;
+  const { category, difficulty, levels: passedLevels = [], resumeLevel = 0 } = route.params || {};
+  const levels = Array.isArray(passedLevels) ? passedLevels : [];
 
-  const [level, setLevel] = useState(resumeLevel);
+  const initialLevel = Number.isInteger(resumeLevel) && resumeLevel >= 0 && resumeLevel < levels.length ? resumeLevel : 0;
+
+  const [level, setLevel] = useState(initialLevel);
   const [score, setScore] = useState(0);
   const [userInput, setUserInput] = useState([]);
   const [completed, setCompleted] = useState(false);
@@ -53,17 +29,14 @@ export default function Easy({ route, navigation }) {
 
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
-  const [fontsLoaded] = useFonts({
-    Poppins_400Regular,
-    Poppins_600SemiBold,
-  });
+  const [fontsLoaded] = useFonts({ Poppins_400Regular, Poppins_600SemiBold });
 
-  // Load global score
+  // Load GLOBAL SCORE
   useEffect(() => {
     const loadStoredScore = async () => {
       try {
         const storedScore = await AsyncStorage.getItem("userScore");
-        if (storedScore !== null) setScore(parseInt(storedScore));
+        if (storedScore !== null) setScore(parseInt(storedScore, 10));
       } catch (error) {
         console.error("Error loading stored score:", error);
       }
@@ -71,23 +44,19 @@ export default function Easy({ route, navigation }) {
     loadStoredScore();
   }, []);
 
-  // Save current level whenever it changes
+  // Save current progress per category + difficulty when level changes
   useEffect(() => {
-    AsyncStorage.setItem("EasyLevel", level.toString()).catch((e) =>
-      console.error("Error saving level:", e)
-    );
-  }, [level]);
-
-  const current = levels[level];
-  const wordLetters = current.word.split("");
-  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
-
-  const totalMargin = (wordLetters.length - 1) * 6;
-  const boxWidth = Math.min(
-    50,
-    (screenWidth - 60 - totalMargin) / wordLetters.length
-  );
-  const boxHeight = boxWidth * 1.2;
+    if (!difficulty || !category) return;
+    const saveProgress = async () => {
+      try {
+        const key = `${difficulty}_${category}_level`;
+        await AsyncStorage.setItem(key, JSON.stringify({ current: level, total: levels.length }));
+      } catch (e) {
+        console.error("Error saving progress:", e);
+      }
+    };
+    saveProgress();
+  }, [level, difficulty, category, levels.length]);
 
   const updateStoredScore = async (newScore) => {
     try {
@@ -109,29 +78,21 @@ export default function Easy({ route, navigation }) {
   };
 
   const handleGuess = (letter) => {
-    if (userInput.length >= wordLetters.length) return;
+    if (userInput.length >= currentWord.length) return;
 
     const newInput = [...userInput, letter];
     setUserInput(newInput);
 
-    if (newInput.length === wordLetters.length) {
+    if (newInput.length === currentWord.length) {
       const guessWord = newInput.join("");
-      const correctWord = current.word;
-
       setTimeout(() => {
-        if (guessWord === correctWord) {
+        if (guessWord === currentWord) {
           const newScore = score + 10;
           setScore(newScore);
           updateStoredScore(newScore);
 
-          if (level + 1 === levels.length) {
-            setCompleted(true);
-          } else {
-            setTimeout(() => {
-              setLevel(level + 1);
-              setUserInput([]);
-            }, 500);
-          }
+          if (level + 1 === levels.length) setCompleted(true);
+          else setTimeout(() => { setLevel(level + 1); setUserInput([]); }, 500);
         } else {
           triggerShake();
           setTimeout(() => setUserInput([]), 500);
@@ -140,122 +101,87 @@ export default function Easy({ route, navigation }) {
     }
   };
 
-  if (!fontsLoaded) {
+  if (!fontsLoaded) return <View style={styles.loadingContainer}><ActivityIndicator size="large" color="#1B4D90" /></View>;
+
+  if (!levels || levels.length === 0) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#1B4D90" />
+      <View style={styles.container}>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={28} color="#333" />
+        </TouchableOpacity>
+        <Image source={require("../assets/logo.png")} style={styles.logo} resizeMode="contain" />
+        <View style={{ alignItems: "center", paddingHorizontal: 30 }}>
+          <Text style={[styles.title, { fontFamily: "Poppins_600SemiBold", textAlign: "center" }]}>
+            No words yet
+          </Text>
+          <Text style={[styles.text, { fontFamily: "Poppins_400Regular", textAlign: "center" }]}>
+            The admin hasn't added words for {category} in {difficulty}.
+          </Text>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 20, backgroundColor: "#4C9EEB", paddingVertical: 12, paddingHorizontal: 24, borderRadius: 10 }}>
+            <Text style={{ color: "#fff", fontWeight: "700" }}>Back</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
 
-  const rows = [];
-  for (let i = 0; i < alphabet.length; i += 4) {
-    rows.push(alphabet.slice(i, i + 4));
-  }
-  rows[rows.length - 1].push("Erase");
+  const currentWordObj = levels[level];
+  if (!currentWordObj) return null;
+
+  const currentWord = currentWordObj.word.toUpperCase();
+  const wordLetters = currentWord.split("");
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+  const totalMargin = (wordLetters.length - 1) * 6;
+  const boxWidth = Math.min(50, (screenWidth - 60 - totalMargin) / wordLetters.length);
+  const boxHeight = boxWidth * 1.2;
+
+  const keyboardRows = [];
+  for (let i = 0; i < alphabet.length; i += 4) keyboardRows.push(alphabet.slice(i, i + 4));
+  keyboardRows[keyboardRows.length - 1].push("Erase");
 
   return (
     <View style={styles.container}>
-      {/* BACK BUTTON */}
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={() => navigation.navigate("GameDashboard")}
-      >
+      <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
         <Ionicons name="arrow-back" size={28} color="#333" />
       </TouchableOpacity>
-
-      <Image
-        source={require("../assets/logo.png")}
-        style={styles.logo}
-        resizeMode="contain"
-      />
+      <Image source={require("../assets/logo.png")} style={styles.logo} resizeMode="contain" />
 
       {completed ? (
         <View style={{ alignItems: "center" }}>
-          <Text style={[styles.title, { fontFamily: "Poppins_600SemiBold" }]}>
-            🎉 Congratulations!
-          </Text>
-          <Text style={[styles.text, { fontFamily: "Poppins_400Regular" }]}>
-            You finished all levels!
-          </Text>
-          <Text style={[styles.text, { fontFamily: "Poppins_400Regular" }]}>
-            Final Score: {score}
-          </Text>
+          <Text style={[styles.title, { fontFamily: "Poppins_600SemiBold" }]}>🎉 Congratulations!</Text>
+          <Text style={[styles.text, { fontFamily: "Poppins_400Regular" }]}>You finished all levels in {category}!</Text>
+          <Text style={[styles.text, { fontFamily: "Poppins_400Regular" }]}>Final Score: {score}</Text>
         </View>
       ) : (
         <>
           <View style={styles.topInfo}>
-            <Text style={[styles.level, { fontFamily: "Poppins_400Regular" }]}>
-              Level: {level + 1}
-            </Text>
-            <Text style={[styles.score, { fontFamily: "Poppins_400Regular" }]}>
-              Score: {score}
-            </Text>
+            <Text style={[styles.level, { fontFamily: "Poppins_400Regular" }]}>Level: {level + 1}</Text>
+            <Text style={[styles.score, { fontFamily: "Poppins_400Regular" }]}>Score: {score}</Text>
           </View>
 
           <View style={styles.hintContainer}>
-            <Text style={[styles.hint, { fontFamily: "Poppins_400Regular" }]}>
-              {current.hint}
-            </Text>
+            <Text style={[styles.hint, { fontFamily: "Poppins_400Regular" }]}>{currentWordObj.hint}</Text>
           </View>
 
-          <Animated.View
-            style={[
-              styles.wordContainer,
-              { transform: [{ translateX: shakeAnim }] },
-            ]}
-          >
+          <Animated.View style={[styles.wordContainer, { transform: [{ translateX: shakeAnim }] }]}>
             {wordLetters.map((_, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.box,
-                  {
-                    width: boxWidth,
-                    height: boxHeight,
-                    borderColor: wrong ? "#E74C3C" : "#1B4D90",
-                    backgroundColor: wrong ? "#FFD6D6" : "#fff",
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.letter,
-                    { fontFamily: "Poppins_600SemiBold", fontSize: boxWidth * 0.6 },
-                  ]}
-                >
-                  {userInput[i] || ""}
-                </Text>
+              <View key={i} style={[styles.box, { width: boxWidth, height: boxHeight, borderColor: wrong ? "#E74C3C" : "#1B4D90", backgroundColor: wrong ? "#FFD6D6" : "#fff" }]}>
+                <Text style={[styles.letter, { fontFamily: "Poppins_600SemiBold", fontSize: boxWidth * 0.6 }]}>{userInput[i] || ""}</Text>
               </View>
             ))}
           </Animated.View>
 
           <View style={styles.keyboard}>
-            {rows.map((row, rowIndex) => (
+            {keyboardRows.map((row, rowIndex) => (
               <View key={rowIndex} style={styles.row}>
                 {row.map((key) =>
                   key === "Erase" ? (
-                    <TouchableOpacity
-                      key={key}
-                      style={styles.eraseKey}
-                      onPress={() => setUserInput(userInput.slice(0, -1))}
-                    >
+                    <TouchableOpacity key={key} style={styles.eraseKey} onPress={() => setUserInput(userInput.slice(0, -1))}>
                       <Ionicons name="backspace-outline" size={26} color="#fff" />
                     </TouchableOpacity>
                   ) : (
-                    <TouchableOpacity
-                      key={key}
-                      style={styles.key}
-                      onPress={() => handleGuess(key)}
-                    >
-                      <Text
-                        style={[
-                          styles.keyText,
-                          { fontFamily: "Poppins_600SemiBold" },
-                        ]}
-                      >
-                        {key}
-                      </Text>
+                    <TouchableOpacity key={key} style={styles.key} onPress={() => handleGuess(key)}>
+                      <Text style={[styles.keyText, { fontFamily: "Poppins_600SemiBold" }]}>{key}</Text>
                     </TouchableOpacity>
                   )
                 )}

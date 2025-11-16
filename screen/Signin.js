@@ -7,85 +7,116 @@ import {
   StyleSheet,
   Image,
   ActivityIndicator,
-  Modal,
+  Alert,
+  ScrollView,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
-  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import {
-  useFonts,
-  Poppins_400Regular,
-  Poppins_600SemiBold,
-} from "@expo-google-fonts/poppins";
+import { useFonts, Poppins_400Regular, Poppins_600SemiBold } from "@expo-google-fonts/poppins";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+// Firebase Admin
+import { ADMIN_ACCOUNT } from "../firebase";
+
+// SQLite
+import * as SQLite from "expo-sqlite";
+let db = null;
+if (SQLite.openDatabase) {
+  db = SQLite.openDatabase("users.db");
+} else {
+  console.log("SQLite not available, using AsyncStorage fallback");
+}
+
 export default function Signin({ navigation }) {
+  const [emailOrUsername, setEmailOrUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [fontsLoaded] = useFonts({ Poppins_400Regular, Poppins_600SemiBold });
 
-  // ✅ Move admin/user credentials to component scope
-  const adminEmail = "admin@gmail.com";
-  const adminPassword = "admindes";
-  const testEmail = "testuser@gmail.com";
-  const testPassword = "test123";
-
-  const [fontsLoaded] = useFonts({
-    Poppins_400Regular,
-    Poppins_600SemiBold,
-  });
-
-  if (!fontsLoaded) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#1E90FF" />
-      </View>
-    );
-  }
+  if (!fontsLoaded) return (
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color="#1E90FF" />
+    </View>
+  );
 
   const handleSignIn = async () => {
-  // ✅ Check if email or password is empty
-  if (!email.trim() || !password.trim()) {
-    Alert.alert("Missing Information", "Please fill in your information.");
-    return; // stop the function
-  }
-
-  setLoading(true);
-
-  setTimeout(async () => {
-    setLoading(false);
-
-    if (
-      (email === adminEmail && password === adminPassword) ||
-      (email === testEmail && password === testPassword)
-    ) {
-      // Save username locally
-      const username = email === adminEmail ? "Admin" : "Player1";
-      await AsyncStorage.setItem("username", username);
-
-      setShowSuccess(true);
-    } else {
-      Alert.alert("Invalid credentials", "Please check your email and password.");
+    if (!emailOrUsername.trim() || !password.trim()) {
+      Alert.alert("Missing Information", "Please fill in your information.");
+      return;
     }
-  }, 1200);
-};
 
+    setLoading(true);
 
-  const handleSuccess = () => {
-    setShowSuccess(false);
+    try {
+      // 1️⃣ Check Admin credentials (Firebase)
+      if (
+        (emailOrUsername === ADMIN_ACCOUNT.email || emailOrUsername === ADMIN_ACCOUNT.username) &&
+        password === ADMIN_ACCOUNT.password
+      ) {
+        await AsyncStorage.setItem("username", ADMIN_ACCOUNT.username);
+        setLoading(false);
+        Alert.alert("Success", "Welcome Admin!", [
+          { text: "OK", onPress: () => navigation.replace("AdminDashboard") },
+        ]);
+        return;
+      }
 
-    // Navigate based on user type
-    if (email === adminEmail) {
-      navigation.replace("AdminDashboard");
-    } else {
-      navigation.replace("GameDashboard");
+      // 2️⃣ Check normal users
+      if (db) {
+        // SQLite (if available)
+        db.transaction(tx => {
+          tx.executeSql(
+            "SELECT * FROM users WHERE (username = ? OR email = ?) AND password = ?",
+            [emailOrUsername, emailOrUsername, password],
+            async (_, { rows }) => {
+              if (rows.length > 0) {
+                const user = rows._array[0];
+                await AsyncStorage.setItem("username", user.username);
+                setLoading(false);
+                Alert.alert("Success", `Welcome back, ${user.username}!`, [
+                  { text: "OK", onPress: () => navigation.replace("GameDashboard") },
+                ]);
+              } else {
+                setLoading(false);
+                Alert.alert("Login Failed", "Invalid credentials.");
+              }
+            },
+            (_, error) => {
+              setLoading(false);
+              console.log("SQLite query error:", error);
+              return true;
+            }
+          );
+        });
+      } else {
+        // AsyncStorage fallback
+        const usersJSON = await AsyncStorage.getItem("users");
+        const users = usersJSON ? JSON.parse(usersJSON) : [];
+
+        const user = users.find(u =>
+          (u.username === emailOrUsername || u.email === emailOrUsername) && u.password === password
+        );
+
+        if (user) {
+          await AsyncStorage.setItem("username", user.username);
+          setLoading(false);
+          Alert.alert("Success", `Welcome back, ${user.username}!`, [
+            { text: "OK", onPress: () => navigation.replace("GameDashboard") },
+          ]);
+        } else {
+          setLoading(false);
+          Alert.alert("Login Failed", "Invalid credentials.");
+        }
+      }
+    } catch (error) {
+      setLoading(false);
+      console.log("Login error:", error);
+      Alert.alert("Error", "Login failed. Please try again.");
     }
   };
 
@@ -97,42 +128,25 @@ export default function Signin({ navigation }) {
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           keyboardVerticalOffset={Platform.OS === "ios" ? 0 : -80}
         >
-          <ScrollView
-            contentContainerStyle={styles.scrollContainer}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-            style={{ flex: 1, backgroundColor: "transparent" }}
-          >
-            {/* Close Button */}
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => navigation.navigate("Home")}
-            >
+          <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
+            <TouchableOpacity style={styles.closeButton} onPress={() => navigation.navigate("Home")}>
               <Ionicons name="close" size={28} color="#fff" />
             </TouchableOpacity>
 
-            {/* Logo */}
             <View style={styles.logoContainer}>
-              <Image
-                source={require("../assets/logo.png")}
-                style={styles.logo}
-                resizeMode="contain"
-              />
+              <Image source={require("../assets/logo.png")} style={styles.logo} resizeMode="contain" />
             </View>
 
-            {/* Sign-in Card */}
             <View style={styles.card}>
               <Text style={styles.subtitle}>SIGN IN TO YOUR ACCOUNT</Text>
 
               <TextInput
                 placeholder="USERNAME OR EMAIL"
                 placeholderTextColor="#999"
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
-                keyboardType="email-address"
                 style={styles.input}
-                required
+                value={emailOrUsername}
+                onChangeText={setEmailOrUsername}
+                autoCapitalize="none"
               />
 
               <View style={styles.passwordContainer}>
@@ -140,74 +154,35 @@ export default function Signin({ navigation }) {
                   placeholder="PASSWORD"
                   placeholderTextColor="#999"
                   secureTextEntry={!showPassword}
+                  style={[styles.input, { flex: 1, marginBottom: 0, borderWidth: 0 }]}
                   value={password}
                   onChangeText={setPassword}
-                  style={[styles.input, { flex: 1, marginBottom: 0, borderWidth: 0 }]}
-                  required
                 />
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                  style={styles.eyeIcon}
-                >
-                  <Ionicons
-                    name={showPassword ? "eye-off-outline" : "eye-outline"}
-                    size={22}
-                    color="#555"
-                  />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
+                  <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={22} color="#555" />
                 </TouchableOpacity>
               </View>
 
-              <TouchableOpacity
-                style={[styles.button, loading && { opacity: 0.7 }]}
-                onPress={handleSignIn}
-                disabled={loading}
-              >
-                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>SUBMIT</Text>}
+              <TouchableOpacity style={[styles.button, loading && { opacity: 0.7 }]} onPress={handleSignIn} disabled={loading}>
+                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>SIGN IN</Text>}
               </TouchableOpacity>
 
               <Text style={styles.signupText}>
                 Don’t have an account?{" "}
-                <Text
-                  style={styles.signupLink}
-                  onPress={() => navigation.navigate("SignUp")}
-                >
+                <Text style={styles.signupLink} onPress={() => navigation.navigate("SignUp")}>
                   Sign up
                 </Text>
               </Text>
             </View>
           </ScrollView>
-
-          {/* Success Modal */}
-          <Modal
-            transparent
-            animationType="fade"
-            visible={showSuccess}
-            onRequestClose={() => setShowSuccess(false)}
-          >
-            <View style={styles.modalOverlay}>
-              <View style={styles.modalCard}>
-                <Ionicons
-                  name="checkmark-circle-outline"
-                  size={64}
-                  color="#1E90FF"
-                  style={{ marginBottom: 10 }}
-                />
-                <Text style={styles.modalTitle}>Signing in successfully!</Text>
-                <Text style={styles.modalSubtitle}>
-                  {email === adminEmail ? "Welcome, Admin!" : "Welcome back!"}
-                </Text>
-
-                <TouchableOpacity style={styles.okButton} onPress={handleSuccess}>
-                  <Text style={styles.okText}>OK</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </Modal>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </LinearGradient>
   );
 }
+
+// --- keep styles same as before ---
+
 
 // --- Styles remain unchanged ---
 const styles = StyleSheet.create({
