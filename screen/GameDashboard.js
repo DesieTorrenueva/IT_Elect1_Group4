@@ -8,6 +8,7 @@ import {
   StatusBar,
   Platform,
   FlatList,
+  Alert,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, FontAwesome5, MaterialIcons } from "@expo/vector-icons";
@@ -49,48 +50,91 @@ export default function GameDashboard({ navigation }) {
     }, [])
   );
 
-  // Function to load level and word data for categories
-  const loadCategoryData = async () => {
-    if (!selectedDifficulty) return;
+  const updateUserScore = async (newScore) => {
+  try {
+    const credRaw = await AsyncStorage.getItem("user_credentials");
+    if (!credRaw) return;
 
-    const levelsData = {};
-    const wordsData = {};
+    const currentUser = JSON.parse(credRaw);
 
-    for (let cat of categories) {
-      try {
-        // LEVELS
-        const levelKey = `${selectedDifficulty}_${cat.name}_level`;
-        let levelVal = await AsyncStorage.getItem(levelKey);
-        if (!levelVal) {
-          levelVal = JSON.stringify({ current: 0, total: 0 });
-          await AsyncStorage.setItem(levelKey, levelVal);
-        }
-        const parsedLevel = JSON.parse(levelVal);
+    const usersRaw = await AsyncStorage.getItem("users");
+    let usersArr = usersRaw ? JSON.parse(usersRaw) : [];
 
-        // WORDS
-        const wordsKey = `${selectedDifficulty}_${cat.name}_words`;
-        let wordsVal = await AsyncStorage.getItem(wordsKey);
-        if (!wordsVal) {
-          wordsVal = JSON.stringify([]);
-          await AsyncStorage.setItem(wordsKey, wordsVal);
-        }
-        const parsedWords = JSON.parse(wordsVal);
-        wordsData[cat.name] = parsedWords;
-        console.log(`GameDashboard: category=${cat.name} levelKey=${levelKey} wordsKey=${wordsKey} parsedWords=${parsedWords.length} parsedLevelTotal=${parsedLevel.total}`);
+    // find user
+    const index = usersArr.findIndex(u => u.email === currentUser.email);
 
-        // Derive total from stored level if available, otherwise use words length
-        const derivedTotal = parsedLevel && parsedLevel.total > 0 ? parsedLevel.total : parsedWords.length;
-        levelsData[cat.name] = { current: parsedLevel.current || 0, total: derivedTotal };
-      } catch (e) {
-        console.error("Error loading category data", e);
-        levelsData[cat.name] = { current: 0, total: 0 };
-        wordsData[cat.name] = [];
-      }
+    if (index !== -1) {
+      usersArr[index].score = newScore;
+    } else {
+      // if not found, push new user
+      usersArr.push({ ...currentUser, score: newScore });
     }
 
-    setCategoryLevels(levelsData);
-    setCategoryWords(wordsData);
-  };
+    await AsyncStorage.setItem("users", JSON.stringify(usersArr));
+  } catch (e) {
+    console.log("Error updating user score:", e);
+  }
+};
+
+const loadCategoryData = useCallback(async () => {
+  if (!selectedDifficulty) return;
+
+  const levelsData = {};
+  const wordsData = {};
+
+  for (let cat of categories) {
+    try {
+      // --- LEVELS ---
+      const levelKey = `${selectedDifficulty}_${cat.name}_level`;
+      let levelVal = await AsyncStorage.getItem(levelKey);
+
+      if (!levelVal) {
+        levelVal = JSON.stringify({ current: 0, total: 0 });
+        await AsyncStorage.setItem(levelKey, levelVal);
+      }
+
+      const parsedLevel = JSON.parse(levelVal);
+
+      // --- WORDS ---
+      const wordsKey = `${selectedDifficulty}_${cat.name}_words`;
+      let wordsVal = await AsyncStorage.getItem(wordsKey);
+
+      if (!wordsVal) {
+        wordsVal = JSON.stringify([]);
+        await AsyncStorage.setItem(wordsKey, wordsVal);
+      }
+
+      const parsedWords = JSON.parse(wordsVal);
+      wordsData[cat.name] = parsedWords;
+
+      // --- Determine total ---
+      const derivedTotal = parsedLevel.total > 0 ? parsedLevel.total : parsedWords.length;
+
+      // --- Correct current if completed ---
+      let correctedCurrent = parsedLevel.current || 0;
+      if (correctedCurrent > derivedTotal) correctedCurrent = derivedTotal;
+
+      // --- Persist corrected value ---
+      if (correctedCurrent !== parsedLevel.current || derivedTotal !== parsedLevel.total) {
+        await AsyncStorage.setItem(levelKey, JSON.stringify({
+          current: correctedCurrent,
+          total: derivedTotal
+        }));
+      }
+
+      levelsData[cat.name] = { current: correctedCurrent, total: derivedTotal };
+
+    } catch (e) {
+      console.error("Error loading category data", e);
+      levelsData[cat.name] = { current: 0, total: 0 };
+      wordsData[cat.name] = [];
+    }
+  }
+
+  setCategoryLevels(levelsData);
+  setCategoryWords(wordsData);
+}, [selectedDifficulty]);
+
 
   // Load category data when difficulty changes
   useEffect(() => {
@@ -118,7 +162,13 @@ export default function GameDashboard({ navigation }) {
         ? "Intermediate"
         : "Expert";
 
-    const resumeLevel = categoryLevels?.[category]?.current || 0;
+    const categoryLevel = categoryLevels?.[category] || { current: 0, total: 0 };
+    const isCompleted = categoryLevel.current === categoryLevel.total && categoryLevel.total > 0;
+    if (isCompleted) {
+      Alert.alert("Completed", "You've already finished this category.");
+      return;
+    }
+    const resumeLevel = categoryLevel.current || 0;
     const levels = categoryWords?.[category] || [];
 
     navigation.navigate(screenName, {
@@ -145,28 +195,33 @@ export default function GameDashboard({ navigation }) {
         </View>
 
         <FlatList
-          contentContainerStyle={styles.categoriesContainer}
-          data={categories}
-          numColumns={2}
-          keyExtractor={(item) => item.name}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.categoryCard}
-              onPress={() => handleCategory(item.name)}
-            >
-              <Image
-                source={item.image}
-                style={{ width: 100, height: 100, borderRadius: 15 }}
-                resizeMode="cover"
-              />
-              <Text style={styles.categoryLevel}>
-                Level: {categoryLevels[item.name]?.current || 0}/
-                {categoryLevels[item.name]?.total || 0}
-              </Text>
-              <Text style={styles.categoryText}>{item.name}</Text>
-            </TouchableOpacity>
-          )}
+  contentContainerStyle={styles.categoriesContainer}
+  data={categories}
+  numColumns={2}
+  keyExtractor={(item) => item.name}
+  renderItem={({ item }) => {
+    const level = categoryLevels[item.name];
+    const isCompleted = level?.current === level?.total && level?.total > 0;
+
+    return (
+      <TouchableOpacity
+        style={styles.categoryCard}
+        onPress={() => handleCategory(item.name)}
+      >
+        <Image
+          source={item.image}
+          style={{ width: 100, height: 100, borderRadius: 15 }}
+          resizeMode="cover"
         />
+        <Text style={styles.categoryLevel}>
+          {isCompleted ? "Completed!" : `Level: ${level?.current || 0}/${level?.total || 0}`}
+        </Text>
+        <Text style={styles.categoryText}>{item.name}</Text>
+      </TouchableOpacity>
+    );
+  }}
+/>
+
 
         <Quit
           visible={quitVisible}

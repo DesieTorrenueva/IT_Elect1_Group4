@@ -1,10 +1,27 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, Image } from 'react-native';
-import { MaterialCommunityIcons, FontAwesome } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { FontAwesome, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
+
+const STORAGE_KEY = 'user_credentials';
 
 const Setting = ({ isVisible, onClose, navigation }) => {
-  const [isMusicOn, setIsMusicOn] = useState(true);
-  const [isClickSoundOn, setIsClickSoundOn] = useState(true);
+  const [imageUri, setImageUri] = useState(null);
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const stored = await AsyncStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const user = JSON.parse(stored);
+          setImageUri(user.imageUri || null);
+        }
+      } catch (err) {
+        setImageUri(null);
+      }
+    };
+    if (isVisible) loadProfile();
+  }, [isVisible]);
 
   return (
     <Modal
@@ -16,61 +33,46 @@ const Setting = ({ isVisible, onClose, navigation }) => {
       <View style={styles.centeredView}>
         <View style={styles.modalView}>
           
-          {/* Close Button */}
+          {/* Close Button as Icon */}
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <Text style={styles.closeText}>x</Text>
+            <Ionicons name="close" size={24} color="#fff" />
           </TouchableOpacity>
 
           {/* Profile Picture */}
           <Image
-            source={require('../assets/profile.jpg')} // adjust path if necessary
+            source={imageUri ? { uri: imageUri } : require('../assets/profile.jpg')}
             style={styles.profilePicture}
           />
 
           {/* Title */}
           <Text style={styles.modalTitle}>Settings</Text>
 
-          {/* Music and Click Sound Toggles */}
-          <View style={styles.toggleRow}>
-            <TouchableOpacity
-              style={[styles.toggleButton, isMusicOn && styles.activeToggle]}
-              onPress={() => setIsMusicOn(!isMusicOn)}
-            >
-              <MaterialCommunityIcons
-                name={isMusicOn ? "music-note" : "music-note-off"}
-                size={30}
-                color={isMusicOn ? '#fff' : '#000'}
-              />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.toggleButton, isClickSoundOn && styles.activeToggle]}
-              onPress={() => setIsClickSoundOn(!isClickSoundOn)}
-            >
-              <MaterialCommunityIcons
-                name={isClickSoundOn ? "volume-high" : "volume-off"}
-                size={30}
-                color={isClickSoundOn ? '#fff' : '#000'}
-              />
-            </TouchableOpacity>
-          </View>
-
           {/* Manage Account */}
-          <TouchableOpacity style={styles.manageAccountButton}>
+          <TouchableOpacity
+            style={styles.manageAccountButton}
+            onPress={() => navigation.navigate('ManageAccount')}
+          >
             <FontAwesome name="user-circle" size={20} color="#fff" />
-            <MaterialCommunityIcons name="cog" size={16} color="#fff" style={styles.cogIcon} />
+            <MaterialCommunityIcons
+              name="cog"
+              size={16}
+              color="#fff"
+              style={styles.cogIcon}
+            />
             <Text style={styles.manageAccountText}>Manage Account</Text>
           </TouchableOpacity>
 
           {/* Privacy Policy */}
-          <TouchableOpacity onPress={() => console.log('Go to Privacy Policy')}>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('PrivacyPolicy')}
+          >
             <Text style={styles.privacyPolicyText}>Privacy Policy</Text>
           </TouchableOpacity>
 
           {/* Home Button */}
           <TouchableOpacity 
             style={styles.homeButton} 
-            onPress={() => navigation.navigate('Home')} // Now works
+            onPress={() => navigation.navigate('Home')}
           >
             <MaterialCommunityIcons name="home" size={30} color="#9A562B" />
           </TouchableOpacity>
@@ -114,9 +116,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -15,
     right: -15,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 35,
+    height: 35,
+    borderRadius: 18,
     backgroundColor: '#E74C3C',
     justifyContent: 'center',
     alignItems: 'center',
@@ -124,30 +126,7 @@ const styles = StyleSheet.create({
     borderColor: '#fff',
     zIndex: 1,
   },
-  closeText: { color: '#fff', fontWeight: 'bold', fontSize: 18 },
   modalTitle: { fontSize: 24, fontWeight: 'bold', color: '#34495E', marginBottom: 20 },
-  toggleRow: { 
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 20,
-    marginBottom: 20,
-    width: '100%',
-  },
-  toggleButton: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#A6E4F8',
-    borderWidth: 4,
-    borderColor: '#4CB7F5',
-  },
-  activeToggle: {
-    backgroundColor: '#4CB7F5',
-    borderColor: '#1976D2',
-  },
   manageAccountButton: {
     flexDirection: 'row',
     alignItems: 'center',

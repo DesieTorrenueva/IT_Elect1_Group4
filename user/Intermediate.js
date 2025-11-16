@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Animated,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useFonts, Poppins_400Regular, Poppins_600SemiBold } from "@expo-google-fonts/poppins";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -91,8 +92,10 @@ export default function Intermediate({ route, navigation }) {
           setScore(newScore);
           updateStoredScore(newScore);
 
-          if (level + 1 === levels.length) setCompleted(true);
-          else setTimeout(() => { setLevel(level + 1); setUserInput([]); }, 500);
+          if (level + 1 === levels.length) {
+            setLevel(level + 1);
+            setCompleted(true);
+          } else setTimeout(() => { setLevel(level + 1); setUserInput([]); }, 500);
         } else {
           triggerShake();
           setTimeout(() => setUserInput([]), 500);
@@ -125,10 +128,7 @@ export default function Intermediate({ route, navigation }) {
     );
   }
 
-  const currentWordObj = levels[level];
-  if (!currentWordObj) return null;
-
-  const currentWord = currentWordObj.word.toUpperCase();
+  const currentWord = !completed ? (levels[level]?.word?.toUpperCase() || "") : "";
   const wordLetters = currentWord.split("");
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
   const totalMargin = (wordLetters.length - 1) * 6;
@@ -147,10 +147,13 @@ export default function Intermediate({ route, navigation }) {
       <Image source={require("../assets/logo.png")} style={styles.logo} resizeMode="contain" />
 
       {completed ? (
-        <View style={{ alignItems: "center" }}>
-          <Text style={[styles.title, { fontFamily: "Poppins_600SemiBold" }]}>🎉 Congratulations!</Text>
-          <Text style={[styles.text, { fontFamily: "Poppins_400Regular" }]}>You finished all levels in {category}!</Text>
-          <Text style={[styles.text, { fontFamily: "Poppins_400Regular" }]}>Final Score: {score}</Text>
+        <View style={{ flex: 1, width: "100%", justifyContent: "center", alignItems: "center", paddingHorizontal: 20, backgroundColor: "#DDF3FF" }}>
+          <Text style={[styles.title, { fontFamily: "Poppins_600SemiBold", fontSize: 36, marginBottom: 20, color: "#333" }]}>🎉 Congratulations!</Text>
+          <Text style={[styles.text, { fontFamily: "Poppins_400Regular", fontSize: 20, marginBottom: 10, color: "#333", textAlign: "center" }]}>You finished all levels in {category}!</Text>
+          <Text style={[styles.text, { fontFamily: "Poppins_400Regular", fontSize: 20, marginBottom: 30, color: "#333" }]}>Final Score: {score}</Text>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 20, backgroundColor: "#4C9EEB", paddingVertical: 12, paddingHorizontal: 24, borderRadius: 10 }}>
+            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>Back to Categories</Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <>
@@ -160,7 +163,7 @@ export default function Intermediate({ route, navigation }) {
           </View>
 
           <View style={styles.hintContainer}>
-            <Text style={[styles.hint, { fontFamily: "Poppins_400Regular" }]}>{currentWordObj.hint}</Text>
+            <Text style={[styles.hint, { fontFamily: "Poppins_400Regular" }]}>{levels[level]?.hint}</Text>
           </View>
 
           <Animated.View style={[styles.wordContainer, { transform: [{ translateX: shakeAnim }] }]}>

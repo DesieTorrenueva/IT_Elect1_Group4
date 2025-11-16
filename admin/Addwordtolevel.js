@@ -31,7 +31,7 @@ if (SQL_AVAILABLE) {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );`,
       [],
-      () => console.log("Addwordtolevel: ensured words table exists"),
+      () => console.log("Words table ready"),
       (t, error) => {
         console.error("Failed to create words table", error);
         return false;
@@ -39,9 +39,7 @@ if (SQL_AVAILABLE) {
     );
   });
 } else {
-  console.warn(
-    "expo-sqlite not available; falling back to AsyncStorage-only mode"
-  );
+  console.warn("SQLite not available; using AsyncStorage fallback");
 }
 
 export default function Addwordtolevel({ navigation }) {
@@ -62,6 +60,7 @@ export default function Addwordtolevel({ navigation }) {
     "Phenomena",
   ];
 
+  // Load words from SQLite or AsyncStorage
   const loadWords = async () => {
     if (SQL_AVAILABLE && db) {
       db.transaction((tx) => {
@@ -101,7 +100,7 @@ export default function Addwordtolevel({ navigation }) {
         }
         setWordsList(combined.reverse());
       } catch (err) {
-        console.error("Failed to load words from AsyncStorage fallback", err);
+        console.error("Failed to load words from AsyncStorage", err);
         setWordsList([]);
       }
     }
@@ -139,16 +138,22 @@ export default function Addwordtolevel({ navigation }) {
       }
 
       try {
-        const key = `${editingItem.level}_${editingItem.category}_words`;
-        const existing = await AsyncStorage.getItem(key);
-        if (existing) {
-          const list = JSON.parse(existing).map((w) => {
-            if (w.word === editingItem.word && w.hint === editingItem.hint)
-              return { word: newWord, hint: newHint };
-            return w;
-          });
-          await AsyncStorage.setItem(key, JSON.stringify(list));
+        // Remove from old location (if level/category changed)
+        const oldKey = `${editingItem.level}_${editingItem.category}_words`;
+        const oldExisting = await AsyncStorage.getItem(oldKey);
+        if (oldExisting) {
+          const oldList = JSON.parse(oldExisting).filter(
+            (w) => !(w.word === editingItem.word && w.hint === editingItem.hint)
+          );
+          await AsyncStorage.setItem(oldKey, JSON.stringify(oldList));
         }
+
+        // Add to new location with updated values
+        const newKey = `${level}_${category}_words`;
+        const newExisting = await AsyncStorage.getItem(newKey);
+        const newList = newExisting ? JSON.parse(newExisting) : [];
+        newList.push({ word: newWord, hint: newHint });
+        await AsyncStorage.setItem(newKey, JSON.stringify(newList));
       } catch (e) {
         console.error("Failed to edit word in AsyncStorage", e);
       }
@@ -256,14 +261,14 @@ export default function Addwordtolevel({ navigation }) {
         />
 
         {/* Input */}
-        <View style={styles.inputCard}>
+        <View style={styles.inputCrd}>
           <Text style={styles.label}>Word:</Text>
           <TextInput
             placeholder="Enter Word"
             placeholderTextColor="#888"
             value={word}
             onChangeText={setWord}
-            style={styles.inputWord}
+            style={styles.inputWrd}
           />
           <Text style={styles.label}>Hint:</Text>
           <TextInput
@@ -271,10 +276,10 @@ export default function Addwordtolevel({ navigation }) {
             placeholderTextColor="#888"
             value={hint}
             onChangeText={setHint}
-            style={styles.inputHint}
-            multiline={true}
+            style={styles.inputHnt}
+            multiline
+            scrollEnabled={true}
             textAlignVertical="top"
-            scrollEnabled={false} // prevent horizontal scrolling
           />
         </View>
 
@@ -284,7 +289,10 @@ export default function Addwordtolevel({ navigation }) {
           {ALL_LEVELS.map((lvl) => (
             <TouchableOpacity
               key={lvl}
-              style={[styles.levelButton, level === lvl && styles.activeLevelButton]}
+              style={[
+                styles.levelButton,
+                level === lvl && styles.activeLevelButton,
+              ]}
               onPress={() => setLevel(lvl)}
             >
               <Text
@@ -377,27 +385,29 @@ const styles = StyleSheet.create({
   gradient: { flex: 1, alignItems: "center" },
   topBar: {
     position: "absolute",
-    top: Platform.OS === "android" ? StatusBar.currentHeight + 10 : 40,
-    left: 20,
+    top: Platform.OS === "android" ? StatusBar.currentHeight + 5 : 15,
+    left: 10,
     zIndex: 10,
   },
   container: {
     flexGrow: 1,
     alignItems: "center",
     paddingTop: 100,
-    paddingHorizontal: 25,
+    paddingHorizontal: 20,
   },
   logo: { width: 120, height: 120, marginBottom: 8 },
-  inputCard: {
+  inputCrd: {
     backgroundColor: "rgba(255,255,255,0.95)",
     borderRadius: 20,
-    width: "100%",
+    alignItems: 'center',
+    width: "80%",
     padding: 20,
     marginBottom: 25,
   },
   label: { fontSize: 16, fontWeight: "600", color: "#333", marginBottom: 5 },
-  inputWord: {
+  inputWrd: {
     width: "100%",
+    alignItems: 'center',
     height: 50,
     borderWidth: 1,
     borderColor: "#ddd",
@@ -407,8 +417,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     fontSize: 16,
   },
-  inputHint: {
+  inputHnt: {
     width: "100%",
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: "#ddd",
     borderRadius: 12,
@@ -418,9 +429,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     fontSize: 16,
     minHeight: 50,
-    maxHeight: 150,
-    flexShrink: 1,
-    // auto-growing
+    maxHeight: 200,
+    height: undefined,
+    textAlignVertical: "top",
+    flexWrap: "wrap",
+    overflow: "hidden",
   },
   levelLabel: {
     fontSize: 18,

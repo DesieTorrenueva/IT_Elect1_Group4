@@ -1,31 +1,66 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
 import { FontAwesome5, Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect } from "@react-navigation/native";
 
 export default function Leaderboard({ navigation }) {
-  const [user, setUser] = useState({ name: "", score: 0 });
+  const [users, setUsers] = useState([]);
 
-  useEffect(() => {
-    const loadUser = async () => {
-      try {
-        const name = await AsyncStorage.getItem("username");
-        const score = await AsyncStorage.getItem("userScore");
-        setUser({
-          name: name || "Player",
-          score: score ? parseInt(score) : 0,
-        });
-      } catch (e) {
-        console.error("Failed to load user data", e);
+  // Save latest score to users list
+  const syncUserScore = async () => {
+    try {
+      const credRaw = await AsyncStorage.getItem("user_credentials");
+      if (!credRaw) return;
+
+      const currentUser = JSON.parse(credRaw);
+
+      const scoreRaw = await AsyncStorage.getItem("userScore");
+      const updatedScore = scoreRaw ? parseInt(scoreRaw) : 0;
+
+      const usersRaw = await AsyncStorage.getItem("users");
+      let usersArr = usersRaw ? JSON.parse(usersRaw) : [];
+
+      const index = usersArr.findIndex(u => u.email === currentUser.email);
+
+      if (index !== -1) {
+        usersArr[index].score = updatedScore;
+      } else {
+        usersArr.push({ ...currentUser, score: updatedScore });
       }
-    };
 
-    loadUser();
-  }, []);
+      await AsyncStorage.setItem("users", JSON.stringify(usersArr));
+    } catch (err) {
+      console.log("Error syncing user score:", err);
+    }
+  };
+
+  // Load leaderboard data
+  const loadUsers = async () => {
+    try {
+      const usersRaw = await AsyncStorage.getItem("users");
+      let usersArr = usersRaw ? JSON.parse(usersRaw) : [];
+
+      usersArr = usersArr.filter(u => u.name && u.email);
+
+      usersArr.sort((a, b) => b.score - a.score);
+      setUsers(usersArr);
+    } catch (e) {
+      console.error("Failed to load users", e);
+      setUsers([]);
+    }
+  };
+
+  // Reload leaderboard every time screen is focused
+  useFocusEffect(
+    React.useCallback(() => {
+      syncUserScore().then(loadUsers);
+    }, [])
+  );
 
   return (
     <View style={styles.container}>
-      {/* Back Button */}
+
       <TouchableOpacity
         style={styles.backButton}
         onPress={() => navigation.navigate("GameDashboard")}
@@ -33,22 +68,28 @@ export default function Leaderboard({ navigation }) {
         <Ionicons name="arrow-back" size={28} color="#a0b597ff" />
       </TouchableOpacity>
 
-      {/* Heading */}
       <Text style={styles.heading}>Leaderboard</Text>
 
-      {/* Trophies */}
       <View style={styles.trophies}>
         <FontAwesome5 name="trophy" size={50} color="#FFD700" style={styles.trophyIcon} />
         <FontAwesome5 name="trophy" size={50} color="#C0C0C0" style={styles.trophyIcon} />
         <FontAwesome5 name="trophy" size={50} color="#CD7F32" style={styles.trophyIcon} />
       </View>
 
-      {/* Top User */}
-      <View style={styles.userRow}>
-        <Text style={styles.userRank}>1</Text>
-        <Text style={styles.userName}>{user.name}</Text>
-        <Text style={styles.userScore}>{user.score}</Text>
-      </View>
+      <ScrollView style={{ width: "100%" }} contentContainerStyle={{ alignItems: "center" }}>
+        {users.length === 0 ? (
+          <Text style={{ color: "#fff", marginTop: 20 }}>No users found.</Text>
+        ) : (
+          users.map((u, idx) => (
+            <View style={styles.userRow} key={u.email + idx}>
+              <Text style={styles.userRank}>{idx + 1}</Text>
+              <Text style={styles.userName}>{u.name}</Text>
+              <Text style={styles.userScore}>{u.score}</Text>
+            </View>
+          ))
+        )}
+      </ScrollView>
+
     </View>
   );
 }
@@ -56,7 +97,7 @@ export default function Leaderboard({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#2c5364", // deep gradient-like blue
+    backgroundColor: "#2c5364",
     alignItems: "center",
     paddingTop: 60,
   },
@@ -69,7 +110,7 @@ const styles = StyleSheet.create({
   heading: {
     fontSize: 36,
     fontWeight: "bold",
-    color: "#c6cd46ff", // golden heading
+    color: "#c6cd46ff",
     marginBottom: 25,
     textShadowColor: "rgba(0,0,0,0.4)",
     textShadowOffset: { width: 2, height: 2 },
@@ -79,7 +120,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    gap: 30,
     marginBottom: 40,
   },
   trophyIcon: {
@@ -90,7 +130,7 @@ const styles = StyleSheet.create({
   userRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    backgroundColor: "#f5d9a4", // soft cream color
+    backgroundColor: "#f5d9a4",
     padding: 18,
     width: "85%",
     borderRadius: 25,

@@ -1,16 +1,17 @@
 {
   "expo": {
-    "name": "Guess The word",
-    "slug": "Guess The word",
+    "name": "Guess The Word",
+    "slug": "guess-the-word",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/logo.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/logo.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0b4c85",
+      "showName": false
     },
     "ios": {
       "supportsTablet": true
@@ -18,9 +19,10 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/logo.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#0b4c85"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.desielove.guesstheword"
     },
     "web": {
       "favicon": "./assets/logo.png"
@@ -28,6 +30,11 @@
     "plugins": [
       "expo-font",
       "expo-sqlite"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "d95e00c7-12e3-4107-ab97-5de34c8fca48"
+      }
+    }
   }
 }

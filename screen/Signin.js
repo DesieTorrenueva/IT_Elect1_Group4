@@ -17,18 +17,11 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useFonts, Poppins_400Regular, Poppins_600SemiBold } from "@expo-google-fonts/poppins";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
-// Firebase Admin
-import { ADMIN_ACCOUNT } from "../firebase";
-
-// SQLite
 import * as SQLite from "expo-sqlite";
+import { ADMIN_ACCOUNT } from "../firebase"; // Admin credentials
+
 let db = null;
-if (SQLite.openDatabase) {
-  db = SQLite.openDatabase("users.db");
-} else {
-  console.log("SQLite not available, using AsyncStorage fallback");
-}
+if (SQLite.openDatabase) db = SQLite.openDatabase("users.db");
 
 export default function Signin({ navigation }) {
   const [emailOrUsername, setEmailOrUsername] = useState("");
@@ -51,13 +44,12 @@ export default function Signin({ navigation }) {
     }
 
     setLoading(true);
+    const input = emailOrUsername.trim().toLowerCase();
 
     try {
-      // 1️⃣ Check Admin credentials (Firebase)
-      if (
-        (emailOrUsername === ADMIN_ACCOUNT.email || emailOrUsername === ADMIN_ACCOUNT.username) &&
-        password === ADMIN_ACCOUNT.password
-      ) {
+      // 1️⃣ Admin login
+      if ((input === ADMIN_ACCOUNT.email.toLowerCase() || input === ADMIN_ACCOUNT.username.toLowerCase()) &&
+          password === ADMIN_ACCOUNT.password) {
         await AsyncStorage.setItem("username", ADMIN_ACCOUNT.username);
         setLoading(false);
         Alert.alert("Success", "Welcome Admin!", [
@@ -66,13 +58,12 @@ export default function Signin({ navigation }) {
         return;
       }
 
-      // 2️⃣ Check normal users
+      // 2️⃣ Normal user login
       if (db) {
-        // SQLite (if available)
         db.transaction(tx => {
           tx.executeSql(
-            "SELECT * FROM users WHERE (username = ? OR email = ?) AND password = ?",
-            [emailOrUsername, emailOrUsername, password],
+            "SELECT * FROM users WHERE (LOWER(username)=? OR LOWER(email)=?) AND password=?",
+            [input, input, password],
             async (_, { rows }) => {
               if (rows.length > 0) {
                 const user = rows._array[0];
@@ -85,11 +76,6 @@ export default function Signin({ navigation }) {
                 setLoading(false);
                 Alert.alert("Login Failed", "Invalid credentials.");
               }
-            },
-            (_, error) => {
-              setLoading(false);
-              console.log("SQLite query error:", error);
-              return true;
             }
           );
         });
@@ -99,7 +85,8 @@ export default function Signin({ navigation }) {
         const users = usersJSON ? JSON.parse(usersJSON) : [];
 
         const user = users.find(u =>
-          (u.username === emailOrUsername || u.email === emailOrUsername) && u.password === password
+          (u.username.toLowerCase() === input || u.email.toLowerCase() === input) &&
+          u.password === password
         );
 
         if (user) {
@@ -181,140 +168,21 @@ export default function Signin({ navigation }) {
   );
 }
 
-// --- keep styles same as before ---
-
-
-// --- Styles remain unchanged ---
+// --- reuse the same styles as Signup ---
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
-  scrollContainer: {
-    flexGrow: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 40,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  closeButton: {
-    position: "absolute",
-    top: 15,
-    right: 20,
-    zIndex: 10,
-    backgroundColor: "rgba(0,0,0,0.3)",
-    padding: 8,
-    borderRadius: 20,
-  },
-  logoContainer: {
-    marginTop: -60,
-    marginBottom: 10,
-    alignItems: "center",
-  },
+  scrollContainer: { flexGrow: 1, justifyContent: "center", alignItems: "center", paddingVertical: 40 },
+  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+  closeButton: { position: "absolute", top: 15, right: 20, zIndex: 10, backgroundColor: "rgba(0,0,0,0.3)", padding: 8, borderRadius: 20 },
+  logoContainer: { marginTop: -60, marginBottom: 10, alignItems: "center" },
   logo: { width: 300, height: 300 },
-  card: {
-    width: "85%",
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
-    borderRadius: 20,
-    padding: 25,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.15,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 6,
-    elevation: 5,
-  },
-  subtitle: {
-    fontFamily: "Poppins_600SemiBold",
-    fontSize: 14,
-    color: "#333",
-    marginBottom: 25,
-  },
-  input: {
-    width: "100%",
-    height: 50,
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    fontFamily: "Poppins_400Regular",
-    fontSize: 14,
-    marginBottom: 15,
-    borderWidth: 1,
-    borderColor: "#ddd",
-  },
-  passwordContainer: {
-    width: "100%",
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 15,
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#ddd",
-  },
+  card: { width: "85%", backgroundColor: "rgba(255, 255, 255, 0.9)", borderRadius: 20, padding: 25, alignItems: "center", shadowColor: "#000", shadowOpacity: 0.15, shadowOffset: { width: 0, height: 4 }, shadowRadius: 6, elevation: 5 },
+  subtitle: { fontFamily: "Poppins_600SemiBold", fontSize: 14, color: "#333", marginBottom: 25 },
+  input: { width: "100%", height: 50, backgroundColor: "#fff", borderRadius: 10, paddingHorizontal: 15, fontFamily: "Poppins_400Regular", fontSize: 14, marginBottom: 15, borderWidth: 1, borderColor: "#ddd" },
+  passwordContainer: { width: "100%", flexDirection: "row", alignItems: "center", marginBottom: 15, backgroundColor: "#fff", borderRadius: 10, borderWidth: 1, borderColor: "#ddd" },
   eyeIcon: { paddingHorizontal: 10 },
-  button: {
-    width: "100%",
-    height: 50,
-    backgroundColor: "#1E90FF",
-    borderRadius: 10,
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 10,
-  },
-  buttonText: {
-    color: "#fff",
-    fontFamily: "Poppins_600SemiBold",
-    fontSize: 16,
-  },
-  signupText: {
-    fontFamily: "Poppins_400Regular",
-    fontSize: 13,
-    color: "#333",
-    marginTop: 20,
-  },
+  button: { width: "100%", height: 50, backgroundColor: "#1E90FF", borderRadius: 10, justifyContent: "center", alignItems: "center", marginTop: 10 },
+  buttonText: { color: "#fff", fontFamily: "Poppins_600SemiBold", fontSize: 16 },
+  signupText: { fontFamily: "Poppins_400Regular", fontSize: 13, color: "#333", marginTop: 20 },
   signupLink: { color: "#1E90FF", fontFamily: "Poppins_600SemiBold" },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalCard: {
-    width: "80%",
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    alignItems: "center",
-    padding: 25,
-    shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 10,
-  },
-  modalTitle: {
-    fontFamily: "Poppins_600SemiBold",
-    fontSize: 16,
-    color: "#333",
-    textAlign: "center",
-  },
-  modalSubtitle: {
-    fontFamily: "Poppins_400Regular",
-    fontSize: 14,
-    color: "#666",
-    marginTop: 4,
-    marginBottom: 20,
-    textAlign: "center",
-  },
-  okButton: {
-    backgroundColor: "#1E90FF",
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 30,
-  },
-  okText: {
-    color: "#fff",
-    fontFamily: "Poppins_600SemiBold",
-    fontSize: 15,
-  },
 });

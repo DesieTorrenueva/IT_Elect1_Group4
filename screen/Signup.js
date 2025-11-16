@@ -17,14 +17,14 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useFonts, Poppins_400Regular, Poppins_600SemiBold } from "@expo-google-fonts/poppins";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
-// SQLite
 import * as SQLite from "expo-sqlite";
+
+// Open SQLite DB if available
 let db = null;
 if (SQLite.openDatabase) {
   db = SQLite.openDatabase("users.db");
 } else {
-  console.log("SQLite not available, will use AsyncStorage fallback");
+  console.log("SQLite not available, using AsyncStorage fallback");
 }
 
 export default function Signup({ navigation }) {
@@ -36,6 +36,7 @@ export default function Signup({ navigation }) {
 
   const [fontsLoaded] = useFonts({ Poppins_400Regular, Poppins_600SemiBold });
 
+  // Create users table if using SQLite
   useEffect(() => {
     if (db) {
       db.transaction(tx => {
@@ -64,7 +65,7 @@ export default function Signup({ navigation }) {
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!emailRegex.test(email.trim())) {
       Alert.alert("Invalid Email", "Please enter a valid email address.");
       return;
     }
@@ -72,12 +73,15 @@ export default function Signup({ navigation }) {
     setLoading(true);
 
     try {
+      const trimmedUsername = username.trim();
+      const trimmedEmail = email.trim().toLowerCase();
+
       if (db) {
-        // Use SQLite
+        // SQLite signup
         db.transaction(tx => {
           tx.executeSql(
             "INSERT INTO users (username, email, password) VALUES (?, ?, ?)",
-            [username, email, password],
+            [trimmedUsername, trimmedEmail, password],
             (_, result) => {
               setLoading(false);
               Alert.alert("Success", "Account created successfully!", [
@@ -93,18 +97,19 @@ export default function Signup({ navigation }) {
           );
         });
       } else {
-        // Fallback: AsyncStorage
+        // AsyncStorage fallback
         const existingUsersJSON = await AsyncStorage.getItem("users");
         const existingUsers = existingUsersJSON ? JSON.parse(existingUsersJSON) : [];
 
-        if (existingUsers.some(u => u.username === username || u.email === email)) {
+        if (existingUsers.some(u => u.username.toLowerCase() === trimmedUsername.toLowerCase() || u.email.toLowerCase() === trimmedEmail)) {
           setLoading(false);
           Alert.alert("Error", "Username or email already exists.");
           return;
         }
 
-        const newUser = { username, email, password };
+        const newUser = { username: trimmedUsername, email: trimmedEmail, password };
         await AsyncStorage.setItem("users", JSON.stringify([...existingUsers, newUser]));
+
         setLoading(false);
         Alert.alert("Success", "Account created successfully!", [
           { text: "OK", onPress: () => navigation.navigate("SignIn") },
@@ -126,6 +131,7 @@ export default function Signup({ navigation }) {
           keyboardVerticalOffset={Platform.OS === "ios" ? 0 : -80}
         >
           <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
+            {/* Close button */}
             <TouchableOpacity style={styles.closeButton} onPress={() => navigation.navigate("Home")}>
               <Ionicons name="close" size={28} color="#fff" />
             </TouchableOpacity>
@@ -149,6 +155,7 @@ export default function Signup({ navigation }) {
                 placeholder="EMAIL"
                 placeholderTextColor="#999"
                 keyboardType="email-address"
+                autoCapitalize="none"
                 style={styles.input}
                 value={email}
                 onChangeText={setEmail}
@@ -186,137 +193,21 @@ export default function Signup({ navigation }) {
   );
 }
 
-
-
+// --- reuse previous styles ---
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
-  scrollContainer: {
-    flexGrow: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 40,
-  },
+  scrollContainer: { flexGrow: 1, justifyContent: "center", alignItems: "center", paddingVertical: 40 },
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
-  closeButton: {
-    position: "absolute",
-    top: 15,
-    right: 20,
-    zIndex: 10,
-    backgroundColor: "rgba(0,0,0,0.3)",
-    padding: 8,
-    borderRadius: 20,
-  },
-  logoContainer: {
-    marginTop: -60,
-    marginBottom: 10,
-    alignItems: "center",
-  },
+  closeButton: { position: "absolute", top: 15, right: 20, zIndex: 10, backgroundColor: "rgba(0,0,0,0.3)", padding: 8, borderRadius: 20 },
+  logoContainer: { marginTop: -60, marginBottom: 10, alignItems: "center" },
   logo: { width: 300, height: 300 },
-  card: {
-    width: "85%",
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
-    borderRadius: 20,
-    padding: 25,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.15,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 6,
-    elevation: 5,
-  },
-  subtitle: {
-    fontFamily: "Poppins_600SemiBold",
-    fontSize: 14,
-    color: "#333",
-    marginBottom: 25,
-  },
-  input: {
-    width: "100%",
-    height: 50,
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    fontFamily: "Poppins_400Regular",
-    fontSize: 14,
-    marginBottom: 15,
-    borderWidth: 1,
-    borderColor: "#ddd",
-  },
-  passwordContainer: {
-    width: "100%",
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 15,
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#ddd",
-  },
+  card: { width: "85%", backgroundColor: "rgba(255,255,255,0.9)", borderRadius: 20, padding: 25, alignItems: "center", shadowColor: "#000", shadowOpacity: 0.15, shadowOffset: { width: 0, height: 4 }, shadowRadius: 6, elevation: 5 },
+  subtitle: { fontFamily: "Poppins_600SemiBold", fontSize: 14, color: "#333", marginBottom: 25 },
+  input: { width: "100%", height: 50, backgroundColor: "#fff", borderRadius: 10, paddingHorizontal: 15, fontFamily: "Poppins_400Regular", fontSize: 14, marginBottom: 15, borderWidth: 1, borderColor: "#ddd" },
+  passwordContainer: { width: "100%", flexDirection: "row", alignItems: "center", marginBottom: 15, backgroundColor: "#fff", borderRadius: 10, borderWidth: 1, borderColor: "#ddd" },
   eyeIcon: { paddingHorizontal: 10 },
-  button: {
-    width: "100%",
-    height: 50,
-    backgroundColor: "#1E90FF",
-    borderRadius: 10,
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 10,
-  },
-  buttonText: {
-    color: "#fff",
-    fontFamily: "Poppins_600SemiBold",
-    fontSize: 16,
-  },
-  signupText: {
-    fontFamily: "Poppins_400Regular",
-    fontSize: 13,
-    color: "#333",
-    marginTop: 20,
-  },
-  signupLink: {
-    color: "#1E90FF",
-    fontFamily: "Poppins_600SemiBold",
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalCard: {
-    width: "80%",
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    alignItems: "center",
-    padding: 25,
-    shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 10,
-  },
-  modalTitle: {
-    fontFamily: "Poppins_600SemiBold",
-    fontSize: 16,
-    color: "#333",
-    textAlign: "center",
-  },
-  modalSubtitle: {
-    fontFamily: "Poppins_400Regular",
-    fontSize: 14,
-    color: "#666",
-    marginTop: 4,
-    marginBottom: 20,
-    textAlign: "center",
-  },
-  okButton: {
-    backgroundColor: "#1E90FF",
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 30,
-  },
-  okText: {
-    color: "#fff",
-    fontFamily: "Poppins_600SemiBold",
-    fontSize: 15,
-  },
+  button: { width: "100%", height: 50, backgroundColor: "#1E90FF", borderRadius: 10, justifyContent: "center", alignItems: "center", marginTop: 10 },
+  buttonText: { color: "#fff", fontFamily: "Poppins_600SemiBold", fontSize: 16 },
+  signupText: { fontFamily: "Poppins_400Regular", fontSize: 13, color: "#333", marginTop: 20 },
+  signupLink: { color: "#1E90FF", fontFamily: "Poppins_600SemiBold" },
 });

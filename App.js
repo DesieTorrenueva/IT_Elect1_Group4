@@ -7,7 +7,6 @@ import { useFonts, Poppins_600SemiBold } from "@expo-google-fonts/poppins";
 import { SafeAreaProvider } from "react-native-safe-area-context"; // updated safe area
 
 // Screens
-import SplashScreen from "./SplashScreen";
 import HomeScreen from "./screen/HomeScreen";
 import Help from "./screen/Help";
 import Signin from "./screen/Signin";
@@ -21,6 +20,9 @@ import Easy from "./user/Easy";
 import Intermediate from "./user/Intermediate";
 import Expert from "./user/Expert";
 import Leaderboard from "./user/Leaderboard";
+import Setting from "./user/Setting";
+import ManageAccount from "./user/ManageAccount";
+import PrivacyPolicy from "./user/PrivacyPolicy";
 import Quit from "./user/Quit";
 
 const Stack = createStackNavigator();
@@ -39,8 +41,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <NavigationContainer>
-        <Stack.Navigator initialRouteName="SplashScreen" screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="SplashScreen" component={SplashScreen} />
+        <Stack.Navigator  screenOptions={{ headerShown: false }}>
           <Stack.Screen name="Home" component={HomeScreen} />
           <Stack.Screen name="Help" component={Help} />
           <Stack.Screen name="SignIn" component={Signin} />
@@ -54,6 +55,9 @@ export default function App() {
           <Stack.Screen name="Intermediate" component={Intermediate} />
           <Stack.Screen name="Expert" component={Expert} />
           <Stack.Screen name="Leaderboard" component={Leaderboard} />
+          <Stack.Screen name="Setting" component={Setting} />
+          <Stack.Screen name="ManageAccount" component={ManageAccount} />
+          <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicy} />
           <Stack.Screen name="Quit" component={Quit} />
         </Stack.Navigator>
       </NavigationContainer>
