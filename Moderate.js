@@ -17,6 +17,11 @@ const WORDS = [
   { word: "COMPUTER", hint: "Used to browse the internet and play games" },
   { word: "LIBRARY", hint: "A quiet place full of books" },
   { word: "MOUNTAIN", hint: "A tall landform that reaches high into the sky" },
+{ word: "BIOLUMINESCENCE", hint: "When living things glow in the dark" },
+{ word: "SUPERCELL", hint: "A rotating thunderstorm" },
+{ word: "QUASAR", hint: "A bright object powered by a black hole" },
+{ word: "PHOTOSYNTHESIS", hint: "How plants make food from sunlight" },
+{ word: "THERMODYNAMICS", hint: "Rules about heat and energy" },
   { word: "AIRPLANE", hint: "Travels through the sky" },
 const MAX_WRONG = 7; // number of wrong guesses allowed
 
