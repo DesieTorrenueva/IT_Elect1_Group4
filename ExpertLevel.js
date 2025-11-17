@@ -20,11 +20,11 @@ import {
 const { width: screenWidth } = Dimensions.get("window");
 
 const levels = [
-  { word: "ALGORITHM", hint: "A set of rules for solving problems in computing" },
-  { word: "INVESTIGATION", hint: "A detailed examination or inquiry" },
-  { word: "PHILOSOPHY", hint: "The study of knowledge and existence" },
-  { word: "REVOLUTION", hint: "A major change or overthrow of a system" },
-  { word: "EXPERIMENT", hint: "A test done to prove a hypothesis" }
+{ word: "BIOLUMINESCENCE", hint: "When living things glow in the dark" },
+{ word: "SUPERCELL", hint: "A rotating thunderstorm" },
+{ word: "QUASAR", hint: "A bright object powered by a black hole" },
+{ word: "PHOTOSYNTHESIS", hint: "How plants make food from sunlight" },
+{ word: "THERMODYNAMICS", hint: "Rules about heat and energy" }
 ];
 
 export default function Level() {
