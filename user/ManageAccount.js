@@ -2,71 +2,146 @@ import React, { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { 
   View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Image,
-  ScrollView, Platform, KeyboardAvoidingView 
+  ScrollView, Platform, KeyboardAvoidingView, ActivityIndicator 
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { db, auth } from '../firebase';
+import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
+
+const STORAGE_KEY = 'user_credentials';
 
 const ManageAccount = ({ navigation }) => {
-  const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const [imageUri, setImageUri] = useState(null);
-  const [showPassword, setShowPassword] = useState(false);
-
-  const STORAGE_KEY = 'user_credentials';
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     loadUser();
   }, []);
 
   const loadUser = async () => {
+    setLoading(true);
     try {
-      const stored = await AsyncStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const user = JSON.parse(stored);
-        setName(user.name || '');
-        setEmail(user.email || '');
-        setPassword(user.password || '');
-        setImageUri(user.imageUri || null);
+      const userId = await AsyncStorage.getItem("userId");
+      if (userId) {
+        const userDoc = await getDoc(doc(db, "users", userId));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setUsername(userData.username || '');
+          setEmail(userData.email || '');
+          setImageUri(userData.imageUri || null);
+        }
       }
     } catch (err) {
       console.error('Failed to load user', err);
+      Alert.alert('Error', 'Failed to load user data.');
     }
+    setLoading(false);
   };
 
   const saveUser = async () => {
-    if (!name.trim() || !email.trim() || !password.trim()) {
-      Alert.alert('Error', 'Please fill in all fields.');
+    if (!username.trim()) {
+      Alert.alert('Error', 'Username cannot be empty.');
       return;
     }
 
+    // Strict email validation
+    const strictEmailRegex = /^[\w-.]+@([\w-]+\.)+(com|net|org|edu)\b$/i;
+    if (!strictEmailRegex.test(email.trim())) {
+      Alert.alert('Error', 'Please enter a valid email address (e.g., user@example.com).');
+      return;
+    }
+
+    setSaving(true);
     try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ name, email, password, imageUri }));
-
-      let users = [];
-      const usersRaw = await AsyncStorage.getItem('users');
-      if (usersRaw) users = Array.isArray(JSON.parse(usersRaw)) ? JSON.parse(usersRaw) : [];
-
-      const idx = users.findIndex(u => u.email === email);
-      let scoreRaw = await AsyncStorage.getItem('userScore');
-      let score = scoreRaw ? parseInt(scoreRaw) : 0;
-
-      if (!score && idx !== -1 && users[idx].score) score = users[idx].score;
-
-      const userObj = { name, email, password, imageUri, score };
-
-      if (idx !== -1) {
-        users[idx] = { ...users[idx], ...userObj };
-      } else {
-        users.push(userObj);
+      const userId = await AsyncStorage.getItem("userId");
+      if (!userId) {
+        Alert.alert('Error', 'User not found.');
+        setSaving(false);
+        return;
       }
 
-      await AsyncStorage.setItem('users', JSON.stringify(users));
-      Alert.alert('Success', 'Your credentials have been updated!');
+      // Update Firestore user data
+      await updateDoc(doc(db, "users", userId), {
+        username: username.trim(),
+        imageUri: imageUri,
+      });
+
+      // Update user credentials in AsyncStorage (important for profile photo sync)
+      const storedData = await AsyncStorage.getItem(STORAGE_KEY);
+      if (storedData) {
+        const userData = JSON.parse(storedData);
+        userData.username = username.trim();
+        userData.imageUri = imageUri;
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
+      }
+
+      // Also update username separately
+      await AsyncStorage.setItem("username", username.trim());
+
+      // Update password if provided
+      if (newPassword.trim()) {
+        if (!currentPassword.trim()) {
+          Alert.alert('Error', 'Please enter your current password to change it.');
+          setSaving(false);
+          return;
+        }
+
+        // Check new password length (minimum 6 characters)
+        if (newPassword.length < 6) {
+          Alert.alert('Weak Password', 'New password must be at least 6 characters long.');
+          setSaving(false);
+          return;
+        }
+
+        try {
+          const user = auth.currentUser;
+          if (!user) {
+            Alert.alert('Error', 'User not authenticated.');
+            setSaving(false);
+            return;
+          }
+
+          // Reauthenticate with current credentials
+          const credential = EmailAuthProvider.credential(email, currentPassword);
+          await reauthenticateWithCredential(user, credential);
+
+          // Update password
+          await updatePassword(user, newPassword);
+          
+          Alert.alert('Success', 'Your account and password have been updated!');
+          setCurrentPassword('');
+          setNewPassword('');
+        } catch (error) {
+          console.error('Password update error:', error);
+          if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+            Alert.alert('Error', 'Current password is incorrect.');
+          } else if (error.code === 'auth/weak-password') {
+            Alert.alert('Error', 'New password should be at least 6 characters.');
+          } else if (error.code === 'auth/requires-recent-login') {
+            Alert.alert('Error', 'For security reasons, please log out and log back in before changing your password.');
+          } else {
+            Alert.alert('Error', `Failed to update password: ${error.message}`);
+          }
+          setSaving(false);
+          return;
+        }
+      } else {
+        Alert.alert('Success', 'Your account has been updated!');
+      }
     } catch (err) {
       console.error('Failed to save user', err);
+      Alert.alert('Error', 'Failed to update account.');
     }
+    setSaving(false);
   };
 
   const pickImage = async () => {
@@ -79,6 +154,8 @@ const ManageAccount = ({ navigation }) => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.5,
+      allowsEditing: true,
+      aspect: [1, 1],
     });
 
     if (!result.canceled) {
@@ -86,16 +163,22 @@ const ManageAccount = ({ navigation }) => {
     }
   };
 
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center' }]}>
+        <ActivityIndicator size="large" color="#4CAF50" />
+      </View>
+    );
+  }
+
   return (
     <KeyboardAvoidingView 
       style={{ flex: 1 }} 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView contentContainerStyle={styles.contAiner}>
         
         {/* Close Button */}
-        <TouchableOpacity style={styles.closeButton} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.cloSeButton} onPress={() => navigation.goBack()}>
           <Ionicons name="close" size={24} color="#fff" />
         </TouchableOpacity>
 
@@ -109,42 +192,69 @@ const ManageAccount = ({ navigation }) => {
           <Text style={styles.changePhotoText}>Change Photo</Text>
         </TouchableOpacity>
 
-        <Text style={styles.label}>Name</Text>
+        <Text style={styles.label}>Username</Text>
         <TextInput 
           style={styles.input} 
-          value={name} 
-          onChangeText={setName} 
-          placeholder="Enter your name"
+          value={username} 
+          onChangeText={setUsername} 
+          placeholder="Enter your username"
         />
 
         <Text style={styles.label}>Email</Text>
         <TextInput 
-          style={styles.input} 
+          style={[styles.input, { backgroundColor: '#f0f0f0' }]} 
           value={email} 
-          onChangeText={setEmail} 
-          placeholder="Enter your email"
+          editable={false}
+          placeholder="Your email"
           keyboardType="email-address"
+          autoCapitalize="none"
         />
+        <Text style={styles.helperText}>Email cannot be changed</Text>
 
-        <Text style={styles.label}>Password</Text>
-        <View style={{ width: '100%', flexDirection: 'row', alignItems: 'center' }}>
+        <Text style={styles.label}>Current Password (Required to change password)</Text>
+        <View style={styles.passwordContainer}>
           <TextInput
             style={[styles.input, { flex: 1, marginBottom: 0 }]}
-            value={password}
-            onChangeText={setPassword}
-            placeholder="Enter your password"
-            secureTextEntry={!showPassword}
+            value={currentPassword}
+            onChangeText={setCurrentPassword}
+            placeholder="Enter current password"
+            secureTextEntry={!showCurrentPassword}
           />
           <TouchableOpacity 
-            onPress={() => setShowPassword(prev => !prev)} 
-            style={{ marginLeft: -40, padding: 10 }}
+            onPress={() => setShowCurrentPassword(prev => !prev)} 
+            style={styles.eyeButton}
           >
-            <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={22} color="#888" />
+            <Ionicons name={showCurrentPassword ? 'eye-off' : 'eye'} size={22} color="#888" />
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.saveButton} onPress={saveUser}>
-          <Text style={styles.saveButtonText}>Save Changes</Text>
+        <Text style={styles.label}>New Password (Leave blank to keep current, min. 6 characters)</Text>
+        <View style={styles.passwordContainer}>
+          <TextInput
+            style={[styles.input, { flex: 1, marginBottom: 0 }]}
+            value={newPassword}
+            onChangeText={setNewPassword}
+            placeholder="Enter new password (min. 6 characters)"
+            secureTextEntry={!showNewPassword}
+          />
+          <TouchableOpacity 
+            onPress={() => setShowNewPassword(prev => !prev)} 
+            style={styles.eyeButton}
+          >
+            <Ionicons name={showNewPassword ? 'eye-off' : 'eye'} size={22} color="#888" />
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity 
+          style={[styles.saveButton, saving && { opacity: 0.7 }]} 
+          onPress={saveUser}
+          disabled={saving}
+        >
+          {saving ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.saveButtonText}>Save Changes</Text>
+          )}
         </TouchableOpacity>
 
       </ScrollView>
@@ -153,21 +263,20 @@ const ManageAccount = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
+  contAiner: {
     flexGrow: 1,
     padding: 25,
     alignItems: 'center',
-    paddingTop: Platform.OS === 'android' ? 50 : 80,
     backgroundColor: '#F7EBDC',
   },
-  closeButton: {
+  cloSeButton: {
     position: 'absolute',
-    top: Platform.OS === 'android' ? 40 : 60,
+    top: 25,
     right: 20,
     width: 35,
     height: 35,
     borderRadius: 18,
-    backgroundColor: '#E74C3C',
+    backgroundColor: '#726c6bff',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
@@ -175,19 +284,18 @@ const styles = StyleSheet.create({
   title: { 
     fontSize: 28, 
     fontWeight: 'bold', 
+    top: 30,
     marginBottom: 50, 
-    color: '#34495E' 
+    color: '#1c76d0ff' 
   },
   profilePicture: { 
     width: 100, 
     height: 100, 
     borderRadius: 50, 
-    borderWidth: 3, 
-    borderColor: '#C0392B', 
     marginBottom: 20 
   },
   changePhotoText: { 
-    color: '#9A562B', 
+    color: '#d77e46ff', 
     textAlign: 'center', 
     marginBottom: 20, 
     textDecorationLine: 'underline' 
@@ -197,7 +305,7 @@ const styles = StyleSheet.create({
     marginLeft: 10, 
     fontSize: 16, 
     fontWeight: '600', 
-    marginTop: 30, 
+    marginTop: 20, 
     color: '#34495E' 
   },
   input: { 
@@ -210,12 +318,32 @@ const styles = StyleSheet.create({
     marginBottom: 10, 
     backgroundColor: '#fff' 
   },
+  helperText: {
+    alignSelf: 'flex-start',
+    marginLeft: 10,
+    fontSize: 12,
+    color: '#888',
+    marginBottom: 5,
+    fontStyle: 'italic',
+  },
+  passwordContainer: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  eyeButton: {
+    marginLeft: -40,
+    padding: 10,
+    zIndex: 1,
+  },
   saveButton: { 
     backgroundColor: '#4CAF50', 
     paddingVertical: 15, 
     paddingHorizontal: 40, 
     borderRadius: 25, 
-    marginTop: 20 
+    marginBottom: 20,
+    marginTop: 10 
   },
   saveButtonText: { 
     color: '#fff', 

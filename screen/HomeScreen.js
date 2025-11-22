@@ -16,7 +16,7 @@ export default function HomeScreen({ navigation }) {
       <SafeAreaView style={styles.innerContainer}>
         {/* Help Button */}
         <TouchableOpacity
-          style={styles.helpButton}
+          style={styles.help}
           onPress={() => navigation.navigate("Help")} // replace with your help screen
         >
           <Text style={styles.helpText}>?</Text>
@@ -83,10 +83,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  helpButton: {
+  help: {
     position: "absolute",
-    top: 40,
-    left: 20,
+    top: 30,
+    left: 25,
     backgroundColor: "#fff",
     width: 40,
     height: 40,
@@ -105,11 +105,12 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     alignItems: "center",
-    marginBottom: 60,
+    marginBottom: 40,
+    marginTop: 40,
   },
   logo: {
-    width: 300,
-    height: 300,
+    width: 220,
+    height: 220,
   },
   buttonsContainer: {
     alignItems: "center",

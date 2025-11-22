@@ -1,9 +1,10 @@
-// firebase.js
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { initializeAuth, getReactNativePersistence } from "firebase/auth/react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getReactNativePersistence } from 'firebase/auth';
 
+// Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyDD2w2KXToWQBG2LYTORVfB6-9AXb7EImI",
   authDomain: "guessthewordgame-73650.firebaseapp.com",
@@ -13,28 +14,65 @@ const firebaseConfig = {
   appId: "1:820848845803:web:37e5315033b9fcee2d2fae",
 };
 
-// Initialize App
-const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+// Initialize app
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-// Initialize Auth (React Native)
-let auth;
-try {
-  auth = initializeAuth(app, {
-    persistence: getReactNativePersistence(AsyncStorage),
-  });
-} catch (err) {
-  console.log("Firebase Auth already initialized");
-}
+// Auth (Expo/React Native compatible)
+const auth = getAuth(app);
+auth.persistence = getReactNativePersistence(AsyncStorage);
 
 // Firestore
-const db = getFirestore(app);
+export const db = getFirestore(app);
+export { auth };
 
-// Hardcoded Admin
-export const ADMIN_ACCOUNT = {
-  email: "admindesie@gmail.com",
-  password: "admindes",
-  username: "desieadmin",
-  role: "admin",
-};
+export async function signInUser(email, password) {
+  try {
+    const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
+    const user = userCredential.user;
+    const idToken = user && user.getIdToken ? await user.getIdToken() : null;
+    return {
+      user: {
+        uid: user.uid,
+        email: user.email,
+      },
+      idToken,
+    };
+  } catch (error) {
+    throw error;
+  }
+}
 
-export { auth, db };
+export async function createUser(email, password) {
+  try {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+    const idToken = user && user.getIdToken ? await user.getIdToken() : null;
+    return {
+      user: {
+        uid: user.uid,
+        email: user.email,
+      },
+      idToken,
+    };
+  } catch (error) {
+    throw error;
+  }
+}
+
+export async function getAuthCurrentUser() {
+  return auth.currentUser || null;
+}
+
+export async function updateUserPassword(currentPassword, newPassword) {
+  try {
+    const user = auth.currentUser;
+    if (!user) throw new Error("No user is currently signed in.");
+    // Re-authenticate user before updating password
+    const credential = EmailAuthProvider.credential(user.email, currentPassword);
+    await reauthenticateWithCredential(user, credential);
+    await updatePassword(user, newPassword);
+    return { success: true };
+  } catch (error) {
+    throw error;
+  }
+}

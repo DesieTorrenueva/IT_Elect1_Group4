@@ -9,23 +9,16 @@ import {
   Platform,
   FlatList,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, FontAwesome5, MaterialIcons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
+import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
+import { db } from "../firebase";
 import Setting from "../user/Setting";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import Quit from "../user/Quit";
-
-// STATIC CATEGORY LIST
-const categories = [
-  { name: "Fruit", image: require("../assets/fruit.jpg") },
-  { name: "Animal", image: require("../assets/animal.jpg") },
-  { name: "Career", image: require("../assets/career.jpg") },
-  { name: "Country", image: require("../assets/country.jpg") },
-  { name: "Literature", image: require("../assets/literature.jpg") },
-  { name: "Phenomena", image: require("../assets/phenomena.jpg") },
-];
 
 export default function GameDashboard({ navigation }) {
   const [score, setScore] = useState(0);
@@ -34,127 +27,141 @@ export default function GameDashboard({ navigation }) {
   const [selectedDifficulty, setSelectedDifficulty] = useState(null);
   const [categoryLevels, setCategoryLevels] = useState({});
   const [categoryWords, setCategoryWords] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [categories, setCategories] = useState([]);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkAdminFlag = async () => {
+      try {
+        const role = await AsyncStorage.getItem('userRole');
+        setIsAdmin(role && role.toLowerCase() === 'admin');
+      } catch (err) {
+        setIsAdmin(false);
+      }
+    };
+    checkAdminFlag();
+  }, []);
+
+  // Load categories from Firebase (admin-managed only)
+  const loadCustomCategories = useCallback(async () => {
+    try {
+      const categoriesQuery = query(collection(db, "categories"));
+      const querySnapshot = await getDocs(categoriesQuery);
+      const customCats = [];
+
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        let imageSource = null;
+        if (data.imageUrl) {
+          imageSource = { uri: data.imageUrl };
+        } else if (data.imageBase64) {
+          imageSource = { uri: `data:image/png;base64,${data.imageBase64}` };
+        }
+        customCats.push({
+          name: data.name,
+          image: imageSource,
+          id: doc.id
+        });
+      });
+
+      setCategories(customCats);
+    } catch (error) {
+      console.error("Error loading custom categories:", error);
+    }
+  }, []);
 
   // Load user score on focus
   useFocusEffect(
     useCallback(() => {
       const loadScore = async () => {
         try {
-          const storedScore = await AsyncStorage.getItem("userScore");
-          if (storedScore !== null) setScore(parseInt(storedScore));
+          const userId = await AsyncStorage.getItem("userId");
+          if (userId) {
+            const userDoc = await getDoc(doc(db, "users", userId));
+            if (userDoc.exists()) {
+              setScore(userDoc.data().score || 0);
+            }
+          }
         } catch (e) {
           console.error("Failed to load score", e);
         }
       };
       loadScore();
+      loadCustomCategories();
     }, [])
   );
 
-  const updateUserScore = async (newScore) => {
-  try {
-    const credRaw = await AsyncStorage.getItem("user_credentials");
-    if (!credRaw) return;
+  const loadCategoryData = useCallback(async () => {
+    if (!selectedDifficulty) return;
 
-    const currentUser = JSON.parse(credRaw);
+    setLoading(true);
+    const levelsData = {};
+    const wordsData = {};
 
-    const usersRaw = await AsyncStorage.getItem("users");
-    let usersArr = usersRaw ? JSON.parse(usersRaw) : [];
-
-    // find user
-    const index = usersArr.findIndex(u => u.email === currentUser.email);
-
-    if (index !== -1) {
-      usersArr[index].score = newScore;
-    } else {
-      // if not found, push new user
-      usersArr.push({ ...currentUser, score: newScore });
-    }
-
-    await AsyncStorage.setItem("users", JSON.stringify(usersArr));
-  } catch (e) {
-    console.log("Error updating user score:", e);
-  }
-};
-
-const loadCategoryData = useCallback(async () => {
-  if (!selectedDifficulty) return;
-
-  const levelsData = {};
-  const wordsData = {};
-
-  for (let cat of categories) {
     try {
-      // --- LEVELS ---
-      const levelKey = `${selectedDifficulty}_${cat.name}_level`;
-      let levelVal = await AsyncStorage.getItem(levelKey);
+      const userId = await AsyncStorage.getItem("userId");
+      
+      for (let cat of categories) {
+        // Fetch words from Firestore
+        const wordsQuery = query(
+          collection(db, "words"),
+          where("level", "==", selectedDifficulty),
+          where("category", "==", cat.name)
+        );
+        const querySnapshot = await getDocs(wordsQuery);
+        const words = [];
+        
+        querySnapshot.forEach((doc) => {
+          const wordData = { id: doc.id, ...doc.data() };
+          console.log(`[DEBUG] Loaded word for ${cat.name} (${selectedDifficulty}):`, wordData);
+          console.log(`[DEBUG] Word: "${wordData.word}", Hint: "${wordData.hint}"`);
+          words.push(wordData);
+        });
+        
+        wordsData[cat.name] = words;
 
-      if (!levelVal) {
-        levelVal = JSON.stringify({ current: 0, total: 0 });
-        await AsyncStorage.setItem(levelKey, levelVal);
+        // Get user progress from AsyncStorage
+        const progressKey = `${userId}_${selectedDifficulty}_${cat.name}_progress`;
+        const progress = await AsyncStorage.getItem(progressKey);
+        const currentLevel = progress ? parseInt(progress) : 0;
+
+        levelsData[cat.name] = {
+          current: currentLevel,
+          total: words.length
+        };
       }
 
-      const parsedLevel = JSON.parse(levelVal);
-
-      // --- WORDS ---
-      const wordsKey = `${selectedDifficulty}_${cat.name}_words`;
-      let wordsVal = await AsyncStorage.getItem(wordsKey);
-
-      if (!wordsVal) {
-        wordsVal = JSON.stringify([]);
-        await AsyncStorage.setItem(wordsKey, wordsVal);
-      }
-
-      const parsedWords = JSON.parse(wordsVal);
-      wordsData[cat.name] = parsedWords;
-
-      // --- Determine total ---
-      const derivedTotal = parsedLevel.total > 0 ? parsedLevel.total : parsedWords.length;
-
-      // --- Correct current if completed ---
-      let correctedCurrent = parsedLevel.current || 0;
-      if (correctedCurrent > derivedTotal) correctedCurrent = derivedTotal;
-
-      // --- Persist corrected value ---
-      if (correctedCurrent !== parsedLevel.current || derivedTotal !== parsedLevel.total) {
-        await AsyncStorage.setItem(levelKey, JSON.stringify({
-          current: correctedCurrent,
-          total: derivedTotal
-        }));
-      }
-
-      levelsData[cat.name] = { current: correctedCurrent, total: derivedTotal };
-
+      setCategoryLevels(levelsData);
+      setCategoryWords(wordsData);
     } catch (e) {
       console.error("Error loading category data", e);
-      levelsData[cat.name] = { current: 0, total: 0 };
-      wordsData[cat.name] = [];
     }
-  }
-
-  setCategoryLevels(levelsData);
-  setCategoryWords(wordsData);
-}, [selectedDifficulty]);
-
+    setLoading(false);
+  }, [selectedDifficulty, categories]);
 
   // Load category data when difficulty changes
   useEffect(() => {
     loadCategoryData();
-  }, [selectedDifficulty]);
+  }, [selectedDifficulty, categories]);
 
-  // Reload category data when the screen comes into focus, to pick up admin changes
+  // Reload category data when the screen comes into focus
   useFocusEffect(
     useCallback(() => {
       if (selectedDifficulty) loadCategoryData();
-    }, [selectedDifficulty])
+    }, [selectedDifficulty, categories])
   );
 
   // Handle difficulty button press
-  const handleDifficulty = (difficulty) => setSelectedDifficulty(difficulty);
+  const handleDifficulty = (difficulty) => {
+    setSettingVisible(false);
+    setSelectedDifficulty(difficulty);
+  };
 
   // Handle category card press
   const handleCategory = (category) => {
     if (!selectedDifficulty) return;
-
+    setSettingVisible(false);
     const screenName =
       selectedDifficulty === "Easy"
         ? "Easy"
@@ -184,9 +191,9 @@ const loadCategoryData = useCallback(async () => {
     return (
       <LinearGradient colors={["#0b4c85", "#dfb487"]} style={styles.gradient}>
         <StatusBar barStyle="light-content" />
-        <View style={styles.topBar}>
+        <View style={styles.gameTopBar}>
           <TouchableOpacity onPress={() => setSelectedDifficulty(null)}>
-            <Ionicons name="arrow-back-outline" size={30} color="#fff" />
+            <Ionicons name="arrow-back-outline" size={30} color="#fff"  />
           </TouchableOpacity>
           <Text style={styles.topBarTitle}>{selectedDifficulty}</Text>
           <TouchableOpacity onPress={() => setSettingVisible(true)}>
@@ -194,34 +201,40 @@ const loadCategoryData = useCallback(async () => {
           </TouchableOpacity>
         </View>
 
-        <FlatList
-  contentContainerStyle={styles.categoriesContainer}
-  data={categories}
-  numColumns={2}
-  keyExtractor={(item) => item.name}
-  renderItem={({ item }) => {
-    const level = categoryLevels[item.name];
-    const isCompleted = level?.current === level?.total && level?.total > 0;
+        {loading ? (
+          <ActivityIndicator size="large" color="#fff" style={{ marginTop: 100 }} />
+        ) : (
+          <View style={{ flex: 1, width: '100%' }}>
+            <FlatList
+              contentContainerStyle={styles.categoriesContainer}
+              data={categories}
+              numColumns={2}
+              keyExtractor={(item) => item.name}
+              renderItem={({ item }) => {
+                const level = categoryLevels[item.name];
+                const isCompleted = level?.current === level?.total && level?.total > 0;
 
-    return (
-      <TouchableOpacity
-        style={styles.categoryCard}
-        onPress={() => handleCategory(item.name)}
-      >
-        <Image
-          source={item.image}
-          style={{ width: 100, height: 100, borderRadius: 15 }}
-          resizeMode="cover"
-        />
-        <Text style={styles.categoryLevel}>
-          {isCompleted ? "Completed!" : `Level: ${level?.current || 0}/${level?.total || 0}`}
-        </Text>
-        <Text style={styles.categoryText}>{item.name}</Text>
-      </TouchableOpacity>
-    );
-  }}
-/>
-
+                return (
+                  <TouchableOpacity
+                    style={styles.categoryCard}
+                    onPress={() => handleCategory(item.name)}
+                  >
+                    <Image
+                      source={item.image}
+                      style={{ width: 100, height: 100, borderRadius: 15 }}
+                      resizeMode="cover"
+                    />
+                    <Text style={styles.categoryLevel}>
+                      {isCompleted ? "Completed!" : `Level: ${level?.current || 0}/${level?.total || 0}`}
+                    </Text>
+                    <Text style={styles.categoryText}>{item.name}</Text>
+                  </TouchableOpacity>
+                );
+              }}
+              showsVerticalScrollIndicator={true}
+            />
+          </View>
+        )}
 
         <Quit
           visible={quitVisible}
@@ -232,11 +245,14 @@ const loadCategoryData = useCallback(async () => {
           }}
         />
 
-        <Setting
-          isVisible={settingVisible}
-          onClose={() => setSettingVisible(false)}
-          navigation={navigation}
-        />
+        {/* Only show Setting modal when explicitly triggered */}
+        {settingVisible && (
+          <Setting
+            isVisible={settingVisible}
+            onClose={() => setSettingVisible(false)}
+            navigation={navigation}
+          />
+        )}
       </LinearGradient>
     );
   }
@@ -245,13 +261,13 @@ const loadCategoryData = useCallback(async () => {
   return (
     <LinearGradient colors={["#0b4c85", "#dfb487"]} style={styles.gradient}>
       <StatusBar barStyle="light-content" />
-      <View style={styles.topBar}>
+      <View style={styles.gametopBar}>
         <TouchableOpacity onPress={() => navigation.navigate("Help")}>
           <Ionicons name="help-circle-outline" size={30} color="#f5d9a4" />
         </TouchableOpacity>
         <Image
           source={require("../assets/logo.png")}
-          style={styles.logo}
+          style={styles.loGo}
           resizeMode="contain"
         />
         <TouchableOpacity onPress={() => setSettingVisible(true)}>
@@ -264,7 +280,6 @@ const loadCategoryData = useCallback(async () => {
         <Text style={styles.scoreNumber}>{score}</Text>
       </View>
 
-      {/* LEVEL BUTTONS */}
       <TouchableOpacity
         style={[styles.button, styles.easyButton]}
         onPress={() => handleDifficulty("Easy")}
@@ -324,28 +339,44 @@ const loadCategoryData = useCallback(async () => {
         }}
       />
 
-      <Setting
-        isVisible={settingVisible}
-        onClose={() => setSettingVisible(false)}
-        navigation={navigation}
-      />
+      {/* Only show Setting modal when explicitly triggered */}
+      {/* Only show Setting modal when explicitly triggered */}
+      {!isAdmin && settingVisible && (
+        <Setting
+          isVisible={settingVisible}
+          onClose={() => {
+            setSettingVisible(false);
+          }}
+          navigation={navigation}
+        />
+      )}
     </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   gradient: { flex: 1, alignItems: "center", justifyContent: "flex-start" },
-  topBar: {
+  gametopBar: {
     position: "absolute",
-    top: Platform.OS === "android" ? (StatusBar.currentHeight || 0) + 5 : 15,
     width: "100%",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 10,
+    paddingHorizontal: 18,
     zIndex: 10,
+    marginTop: 18,
   },
-  logo: { width: 95, height: 95, marginTop: -10 },
+  gameTopBar: {
+    position: "absolute",
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 18,
+    zIndex: 10,
+    marginTop: -10,
+  },
+  loGo: { width: 80, height: 80, marginTop: -20 },
   scoreContainer: { alignItems: "center", marginTop: 180, marginBottom: 25 },
   scoreLabel: {
     fontSize: 24,
@@ -416,5 +447,7 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     color: "#f5d9a4",
     textAlign: "center",
+    marginTop: 50,
   },
 });
+

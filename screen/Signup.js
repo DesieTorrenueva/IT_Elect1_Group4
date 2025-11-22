@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -16,16 +16,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFonts, Poppins_400Regular, Poppins_600SemiBold } from "@expo-google-fonts/poppins";
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as SQLite from "expo-sqlite";
-
-// Open SQLite DB if available
-let db = null;
-if (SQLite.openDatabase) {
-  db = SQLite.openDatabase("users.db");
-} else {
-  console.log("SQLite not available, using AsyncStorage fallback");
-}
+import { createUser } from "../firebase";
+import { doc, setDoc } from "firebase/firestore";
+import { db } from "../firebase";
 
 export default function Signup({ navigation }) {
   const [username, setUsername] = useState("");
@@ -35,22 +28,6 @@ export default function Signup({ navigation }) {
   const [loading, setLoading] = useState(false);
 
   const [fontsLoaded] = useFonts({ Poppins_400Regular, Poppins_600SemiBold });
-
-  // Create users table if using SQLite
-  useEffect(() => {
-    if (db) {
-      db.transaction(tx => {
-        tx.executeSql(
-          `CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE,
-            email TEXT UNIQUE,
-            password TEXT
-          );`
-        );
-      });
-    }
-  }, []);
 
   if (!fontsLoaded) return (
     <View style={styles.loadingContainer}>
@@ -70,55 +47,57 @@ export default function Signup({ navigation }) {
       return;
     }
 
+    // Check password length (minimum 6 characters)
+    if (password.length < 6) {
+      Alert.alert("Weak Password", "Password must be at least 6 characters long.");
+      return;
+    }
+
     setLoading(true);
 
     try {
       const trimmedUsername = username.trim();
       const trimmedEmail = email.trim().toLowerCase();
 
-      if (db) {
-        // SQLite signup
-        db.transaction(tx => {
-          tx.executeSql(
-            "INSERT INTO users (username, email, password) VALUES (?, ?, ?)",
-            [trimmedUsername, trimmedEmail, password],
-            (_, result) => {
-              setLoading(false);
-              Alert.alert("Success", "Account created successfully!", [
-                { text: "OK", onPress: () => navigation.navigate("SignIn") },
-              ]);
-            },
-            (_, error) => {
-              setLoading(false);
-              console.log("SQLite insert error:", error);
-              Alert.alert("Error", "Username or email already exists.");
-              return true;
-            }
-          );
-        });
-      } else {
-        // AsyncStorage fallback
-        const existingUsersJSON = await AsyncStorage.getItem("users");
-        const existingUsers = existingUsersJSON ? JSON.parse(existingUsersJSON) : [];
+      // Create user in Firebase Auth
+      const userCredential = await createUser(trimmedEmail, password);
+      const user = userCredential.user;
 
-        if (existingUsers.some(u => u.username.toLowerCase() === trimmedUsername.toLowerCase() || u.email.toLowerCase() === trimmedEmail)) {
-          setLoading(false);
-          Alert.alert("Error", "Username or email already exists.");
-          return;
+      // Store user data in Firestore
+      await setDoc(doc(db, "users", user.uid), {
+        username: trimmedUsername,
+        email: trimmedEmail,
+        score: 0,
+        role: "user",
+        createdAt: new Date().toISOString(),
+      });
+
+        // Also create a minimal public username -> email/uid mapping so sign-in by username
+        // can resolve the email without reading the full users collection.
+        try {
+          await setDoc(doc(db, "usernames", trimmedUsername.toLowerCase()), {
+            uid: user.uid,
+            email: trimmedEmail,
+          });
+        } catch (e) {
+          console.warn('Failed to write username mapping:', e);
         }
 
-        const newUser = { username: trimmedUsername, email: trimmedEmail, password };
-        await AsyncStorage.setItem("users", JSON.stringify([...existingUsers, newUser]));
-
-        setLoading(false);
-        Alert.alert("Success", "Account created successfully!", [
-          { text: "OK", onPress: () => navigation.navigate("SignIn") },
-        ]);
-      }
+      setLoading(false);
+      Alert.alert("Success", "Account created successfully!", [
+        { text: "OK", onPress: () => navigation.navigate("SignIn") },
+      ]);
     } catch (error) {
       setLoading(false);
       console.log("Signup error:", error);
-      Alert.alert("Error", "Signup failed. Please try again.");
+      
+      if (error.code === "auth/email-already-in-use") {
+        Alert.alert("Error", "This email is already registered.");
+      } else if (error.code === "auth/weak-password") {
+        Alert.alert("Error", "Password should be at least 6 characters.");
+      } else {
+        Alert.alert("Error", "Signup failed. Please try again.");
+      }
     }
   };
 
@@ -131,7 +110,6 @@ export default function Signup({ navigation }) {
           keyboardVerticalOffset={Platform.OS === "ios" ? 0 : -80}
         >
           <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
-            {/* Close button */}
             <TouchableOpacity style={styles.closeButton} onPress={() => navigation.navigate("Home")}>
               <Ionicons name="close" size={28} color="#fff" />
             </TouchableOpacity>
@@ -163,7 +141,7 @@ export default function Signup({ navigation }) {
 
               <View style={styles.passwordContainer}>
                 <TextInput
-                  placeholder="PASSWORD"
+                  placeholder="PASSWORD (min. 6 characters)"
                   placeholderTextColor="#999"
                   secureTextEntry={!showPassword}
                   style={[styles.input, { flex: 1, marginBottom: 0, borderWidth: 0 }]}
@@ -193,7 +171,6 @@ export default function Signup({ navigation }) {
   );
 }
 
-// --- reuse previous styles ---
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
   scrollContainer: { flexGrow: 1, justifyContent: "center", alignItems: "center", paddingVertical: 40 },

@@ -31,7 +31,7 @@ const levels = [
   { word: "WATERMELON", hint: "A large juicy fruit with many seeds" },
 ];
 
-export default function ForGuest({ navigation }) { // <-- destructured here
+export default function ForGuest({ navigation }) {
   const [level, setLevel] = useState(0);
   const [score, setScore] = useState(0);
   const [userInput, setUserInput] = useState([]);
@@ -47,7 +47,7 @@ export default function ForGuest({ navigation }) { // <-- destructured here
 
   if (!fontsLoaded) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={styles.guest_loadingContainer}>
         <ActivityIndicator size="large" color="#1B4D90" />
       </View>
     );
@@ -114,9 +114,9 @@ export default function ForGuest({ navigation }) { // <-- destructured here
 
   if (completed) {
     return (
-      <View style={styles.container}>
+      <View style={styles.guest_container}>
         <TouchableOpacity
-          style={styles.backButton}
+          style={styles.guest_baCkButton}
           onPress={() => navigation.navigate("Home")}
         >
           <Ionicons name="arrow-back" size={28} color="#333" />
@@ -124,16 +124,19 @@ export default function ForGuest({ navigation }) { // <-- destructured here
 
         <Image
           source={require("../assets/logo.png")}
-          style={styles.logo}
+          style={styles.guest_logo}
           resizeMode="contain"
         />
-        <Text style={[styles.title, { fontFamily: "Poppins_600SemiBold" }]}>
+
+        <Text style={[styles.guest_title, { fontFamily: "Poppins_600SemiBold" }]}>
           🎉 Congratulations!
         </Text>
-        <Text style={[styles.text, { fontFamily: "Poppins_400Regular" }]}>
+
+        <Text style={[styles.guest_text, { fontFamily: "Poppins_400Regular" }]}>
           You finished all levels.
         </Text>
-        <Text style={[styles.text, { fontFamily: "Poppins_400Regular" }]}>
+
+        <Text style={[styles.guest_text, { fontFamily: "Poppins_400Regular" }]}>
           Final Score: {score}
         </Text>
       </View>
@@ -147,9 +150,9 @@ export default function ForGuest({ navigation }) { // <-- destructured here
   rows[rows.length - 1].push("Erase");
 
   return (
-    <View style={styles.container}>
+    <View style={styles.guest_container}>
       <TouchableOpacity
-        style={styles.backButton}
+        style={styles.guest_baCkButton}
         onPress={() => navigation.navigate("Home")}
       >
         <Ionicons name="arrow-back" size={28} color="#333" />
@@ -157,28 +160,29 @@ export default function ForGuest({ navigation }) { // <-- destructured here
 
       <Image
         source={require("../assets/logo.png")}
-        style={styles.logo}
+        style={styles.guest_logo}
         resizeMode="contain"
       />
 
-      <View style={styles.topInfo}>
-        <Text style={[styles.level, { fontFamily: "Poppins_400Regular" }]}>
+      <View style={styles.guest_topInfo}>
+        <Text style={[styles.guest_level, { fontFamily: "Poppins_400Regular" }]}>
           Level: {level + 1}
         </Text>
-        <Text style={[styles.score, { fontFamily: "Poppins_400Regular" }]}>
+
+        <Text style={[styles.guest_score, { fontFamily: "Poppins_400Regular" }]}>
           Score: {score}
         </Text>
       </View>
 
-      <View style={styles.hintContainer}>
-        <Text style={[styles.hint, { fontFamily: "Poppins_400Regular" }]}>
+      <View style={styles.guest_hintContainer}>
+        <Text style={[styles.guest_hint, { fontFamily: "Poppins_400Regular" }]}>
           {current.hint}
         </Text>
       </View>
 
       <Animated.View
         style={[
-          styles.wordContainer,
+          styles.guest_wordContainer,
           { transform: [{ translateX: shakeAnim }] },
         ]}
       >
@@ -186,7 +190,7 @@ export default function ForGuest({ navigation }) { // <-- destructured here
           <View
             key={i}
             style={[
-              styles.box,
+              styles.guest_box,
               {
                 width: boxWidth,
                 height: boxHeight,
@@ -197,7 +201,7 @@ export default function ForGuest({ navigation }) { // <-- destructured here
           >
             <Text
               style={[
-                styles.letter,
+                styles.guest_letter,
                 { fontFamily: "Poppins_600SemiBold", fontSize: boxWidth * 0.6 },
               ]}
             >
@@ -207,14 +211,14 @@ export default function ForGuest({ navigation }) { // <-- destructured here
         ))}
       </Animated.View>
 
-      <View style={styles.keyboard}>
+      <View style={styles.guest_keyboard}>
         {rows.map((row, rowIndex) => (
-          <View key={rowIndex} style={styles.row}>
+          <View key={rowIndex} style={styles.guest_row}>
             {row.map((key) =>
               key === "Erase" ? (
                 <TouchableOpacity
                   key={key}
-                  style={styles.eraseKey}
+                  style={styles.guest_eraseKey}
                   onPress={handleErase}
                 >
                   <Ionicons name="backspace-outline" size={26} color="#fff" />
@@ -222,12 +226,12 @@ export default function ForGuest({ navigation }) { // <-- destructured here
               ) : (
                 <TouchableOpacity
                   key={key}
-                  style={styles.key}
+                  style={styles.guest_key}
                   onPress={() => handleGuess(key)}
                 >
                   <Text
                     style={[
-                      styles.keyText,
+                      styles.guest_keyText,
                       { fontFamily: "Poppins_600SemiBold" },
                     ]}
                   >
@@ -244,111 +248,110 @@ export default function ForGuest({ navigation }) { // <-- destructured here
 }
 
 const styles = StyleSheet.create({
-  container: {
+  guest_container: {
     flex: 1,
     backgroundColor: "#DDF3FF",
     alignItems: "center",
     justifyContent: "center",
+    position: "relative",
     paddingTop: 20,
   },
-  loadingContainer: {
+  guest_loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#DDF3FF",
   },
-  backButton: {
+  guest_baCkButton: {
+    top: 30,
+    left: 15,
     position: "absolute",
-    top: 40,
-    left: 20,
+    zIndex: 10,
   },
-  logo: {
-    width: 150,
-    height: 80,
-    marginBottom: 2,
+  guest_logo: {
+    width: 120,
+    height: 60,
+    marginBottom: 5,
+    marginTop: 10,
   },
-  topInfo: {
+  guest_topInfo: {
     flexDirection: "row",
     justifyContent: "space-between",
     width: "85%",
     marginBottom: 10,
   },
-  level: {
+  guest_level: {
     fontSize: 18,
     color: "#333",
   },
-  score: {
+  guest_score: {
     fontSize: 18,
     color: "#333",
   },
-  hintContainer: {
+  guest_hintContainer: {
     backgroundColor: "#fff",
     borderRadius: 10,
     padding: 12,
     width: "80%",
     alignItems: "center",
-    marginBottom: 10,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
+    marginBottom: 5,
   },
-  hint: {
+  guest_hint: {
     fontSize: 16,
     color: "#333",
     textAlign: "center",
   },
-  wordContainer: {
+  guest_wordContainer: {
     flexDirection: "row",
     justifyContent: "center",
-    marginVertical: 20,
+    marginVertical: 10,
     flexWrap: "wrap",
   },
-  box: {
+  guest_box: {
     borderWidth: 2,
     marginHorizontal: 3,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 10,
   },
-  letter: {
+  guest_letter: {
     color: "#1B4D90",
   },
-  keyboard: {
+  guest_keyboard: {
     alignItems: "center",
     marginTop: 2,
   },
-  row: {
+  guest_row: {
     flexDirection: "row",
     justifyContent: "center",
   },
-  key: {
+  guest_key: {
     width: 60,
-    height: 55,
+    height: 50,
     backgroundColor: "#4C9EEB",
-    margin: 6,
+    margin: 5,
     borderRadius: 8,
     justifyContent: "center",
     alignItems: "center",
   },
-  eraseKey: {
+  guest_eraseKey: {
     width: 75,
-    height: 55,
+    height: 50,
     backgroundColor: "#E74C3C",
     margin: 6,
     borderRadius: 8,
     justifyContent: "center",
     alignItems: "center",
   },
-  keyText: {
+  guest_keyText: {
     color: "white",
     fontSize: 20,
   },
-  title: {
+  guest_title: {
     fontSize: 24,
     marginVertical: 10,
   },
-  text: {
+  guest_text: {
     fontSize: 18,
     marginVertical: 6,
   },

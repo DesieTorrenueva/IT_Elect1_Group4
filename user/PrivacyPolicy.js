@@ -11,7 +11,7 @@ const PrivacyPolicy = ({ navigation }) => {
         {'\n\n'}
         1. We collect only the minimal information required to provide the app's functionality.
         {'\n\n'}
-        2. Your credentials (name, email, password) are securely stored locally and are never shared with third parties.
+        2. Your credentials (username, email, password) are securely stored locally and are never shared with third parties.
         {'\n\n'}
         3. You have full control over your data and can update or delete your information anytime through the Manage Account section.
         {'\n\n'}

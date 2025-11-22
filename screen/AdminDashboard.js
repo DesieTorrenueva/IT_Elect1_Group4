@@ -23,16 +23,22 @@ export default function AdminDashboard({ navigation }) {
     );
   };
 
+  const navigateToLeaderboard = () => {
+    navigation.dispatch(
+      CommonActions.navigate({ name: "AdminLeaderboard" })
+    );
+  };
+
   return (
     <LinearGradient colors={["#102c44ff", "#8c673fff"]} style={styles.gradient}>
       <StatusBar barStyle="light-content" />
 
       {/* Top Bar with Logo */}
-      <View style={styles.topBar}>
+      <View style={styles.atopBar}>
         <View style={styles.leftPlaceholder} />
         <Image
           source={require("../assets/logo.png")}
-          style={styles.logo}
+          style={styles.logoo}
           resizeMode="contain"
         />
         <View style={styles.leftPlaceholder} />
@@ -46,6 +52,13 @@ export default function AdminDashboard({ navigation }) {
         <View style={styles.buttonContent}>
           <FontAwesome5 name="plus-circle" size={22} color="#1d3557" />
           <Text style={styles.buttonText}>ADD WORD TO LEVEL</Text>
+        </View>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.button} onPress={navigateToLeaderboard}>
+        <View style={styles.buttonContent}>
+          <FontAwesome5 name="medal" size={22} color="#1d3557" />
+          <Text style={styles.buttonText}>VIEW LEADERBOARD</Text>
         </View>
       </TouchableOpacity>
 
@@ -75,23 +88,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "flex-start",
   },
-  topBar: {
+  atopBar: {
     position: "absolute",
-    top: Platform.OS === "android" ? StatusBar.currentHeight + 10 : 40,
-    width: "90%",
+    width: "100%",
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     zIndex: 10,
   },
   leftPlaceholder: { width: 30 },
-  logo: { width: 300, height: 300, marginTop: -10 },
+  logoo: { width: 300, height: 300, marginTop: 10 },
   heading: {
     fontSize: 32,
     fontWeight: "bold",
     color: "#e3e1dfff",
-    marginTop: 370,
-    marginBottom: 80,
+    marginTop: 340,
+    marginBottom: 70,
   },
   button: {
     width: "75%",

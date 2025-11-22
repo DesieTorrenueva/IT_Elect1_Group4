@@ -16,12 +16,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFonts, Poppins_400Regular, Poppins_600SemiBold } from "@expo-google-fonts/poppins";
 import { Ionicons } from "@expo/vector-icons";
+import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { signInUser, db } from "../firebase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as SQLite from "expo-sqlite";
-import { ADMIN_ACCOUNT } from "../firebase"; // Admin credentials
-
-let db = null;
-if (SQLite.openDatabase) db = SQLite.openDatabase("users.db");
 
 export default function Signin({ navigation }) {
   const [emailOrUsername, setEmailOrUsername] = useState("");
@@ -47,63 +44,52 @@ export default function Signin({ navigation }) {
     const input = emailOrUsername.trim().toLowerCase();
 
     try {
-      // 1️⃣ Admin login
-      if ((input === ADMIN_ACCOUNT.email.toLowerCase() || input === ADMIN_ACCOUNT.username.toLowerCase()) &&
-          password === ADMIN_ACCOUNT.password) {
-        await AsyncStorage.setItem("username", ADMIN_ACCOUNT.username);
+      // Sign-in via REST helper. `signInUser` will accept email or username (it looks up username -> email)
+      const userCredential = await signInUser(input, password);
+      const user = userCredential.user;
+
+      // Get user data from Firestore using uid
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        await AsyncStorage.setItem("userId", user.uid);
+        await AsyncStorage.setItem("username", userData.username || "");
+        await AsyncStorage.setItem("userRole", userData.role || "user");
+
         setLoading(false);
-        Alert.alert("Success", "Welcome Admin!", [
-          { text: "OK", onPress: () => navigation.replace("AdminDashboard") },
-        ]);
-        return;
-      }
+        const welcomeMsg = userData.username ? `Welcome back, ${userData.username}!` : "Welcome back!";
 
-      // 2️⃣ Normal user login
-      if (db) {
-        db.transaction(tx => {
-          tx.executeSql(
-            "SELECT * FROM users WHERE (LOWER(username)=? OR LOWER(email)=?) AND password=?",
-            [input, input, password],
-            async (_, { rows }) => {
-              if (rows.length > 0) {
-                const user = rows._array[0];
-                await AsyncStorage.setItem("username", user.username);
-                setLoading(false);
-                Alert.alert("Success", `Welcome back, ${user.username}!`, [
-                  { text: "OK", onPress: () => navigation.replace("GameDashboard") },
-                ]);
-              } else {
-                setLoading(false);
-                Alert.alert("Login Failed", "Invalid credentials.");
-              }
-            }
-          );
-        });
-      } else {
-        // AsyncStorage fallback
-        const usersJSON = await AsyncStorage.getItem("users");
-        const users = usersJSON ? JSON.parse(usersJSON) : [];
-
-        const user = users.find(u =>
-          (u.username.toLowerCase() === input || u.email.toLowerCase() === input) &&
-          u.password === password
-        );
-
-        if (user) {
-          await AsyncStorage.setItem("username", user.username);
-          setLoading(false);
-          Alert.alert("Success", `Welcome back, ${user.username}!`, [
-            { text: "OK", onPress: () => navigation.replace("GameDashboard") },
+        if (userData.role && userData.role.toLowerCase() === "admin") {
+          Alert.alert("Success", welcomeMsg, [
+            { text: "OK", onPress: () => navigation.replace("AdminDashboard") },
           ]);
         } else {
-          setLoading(false);
-          Alert.alert("Login Failed", "Invalid credentials.");
+          Alert.alert("Success", welcomeMsg, [
+            { text: "OK", onPress: () => navigation.replace("GameDashboard") },
+          ]);
         }
+      } else {
+        // If user doc doesn't exist, treat as missing profile
+        setLoading(false);
+        Alert.alert("Error", "User data not found. Please complete your profile or contact support.");
       }
     } catch (error) {
       setLoading(false);
       console.log("Login error:", error);
-      Alert.alert("Error", "Login failed. Please try again.");
+      // Provide clearer messages for common cases
+      if (error.message && error.message.includes('Missing or insufficient permissions')) {
+        Alert.alert('Permission Error', 'Cannot access user data. Check Firestore rules for `usernames` or `users`.');
+        return;
+      }
+
+      if (error.code === "auth/user-not-found" || error.code === "auth/wrong-password" || error.code === "auth/invalid-credential") {
+        Alert.alert("Login Failed", "Incorrect email or password.");
+      } else if (error.code === "auth/invalid-email") {
+        Alert.alert("Login Failed", "Invalid email format.");
+      } else {
+        Alert.alert("Error", "Login failed. Please try again.");
+      }
     }
   };
 
@@ -128,12 +114,13 @@ export default function Signin({ navigation }) {
               <Text style={styles.subtitle}>SIGN IN TO YOUR ACCOUNT</Text>
 
               <TextInput
-                placeholder="USERNAME OR EMAIL"
+                placeholder="EMAIL"
                 placeholderTextColor="#999"
                 style={styles.input}
                 value={emailOrUsername}
                 onChangeText={setEmailOrUsername}
                 autoCapitalize="none"
+                keyboardType="email-address"
               />
 
               <View style={styles.passwordContainer}>
@@ -155,7 +142,7 @@ export default function Signin({ navigation }) {
               </TouchableOpacity>
 
               <Text style={styles.signupText}>
-                Don’t have an account?{" "}
+                Don't have an account?{" "}
                 <Text style={styles.signupLink} onPress={() => navigation.navigate("SignUp")}>
                   Sign up
                 </Text>
@@ -168,7 +155,6 @@ export default function Signin({ navigation }) {
   );
 }
 
-// --- reuse the same styles as Signup ---
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
   scrollContainer: { flexGrow: 1, justifyContent: "center", alignItems: "center", paddingVertical: 40 },
