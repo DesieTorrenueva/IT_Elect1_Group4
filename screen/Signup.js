@@ -17,7 +17,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useFonts, Poppins_400Regular, Poppins_600SemiBold } from "@expo-google-fonts/poppins";
 import { Ionicons } from "@expo/vector-icons";
 import { createUser } from "../firebase";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, getDocs, collection, query, where } from "firebase/firestore";
 import { db } from "../firebase";
 
 export default function Signup({ navigation }) {
@@ -41,10 +41,29 @@ export default function Signup({ navigation }) {
       return;
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email.trim())) {
-      Alert.alert("Invalid Email", "Please enter a valid email address.");
+    // Strict email validation - only allow common TLDs
+    const strictEmailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.(com|net|org|edu|gov)$/i;
+    
+    if (!strictEmailRegex.test(email.trim())) {
+      Alert.alert(
+        "Invalid Email", 
+        "Please enter a valid email address"
+      );
       return;
+    }
+
+    // Additional check for common typos
+    const commonTypos = ['.cm', '.cmo', '.con', '.met', '.rog', '.ogr', '.nte', '.ocm'];
+    const emailLower = email.trim().toLowerCase();
+    
+    for (const typo of commonTypos) {
+      if (emailLower.endsWith(typo)) {
+        Alert.alert(
+          "Possible Typo Detected", 
+          `Did you mean to use ".com" instead of "${typo}"?\n\nPlease check your email address carefully.`
+        );
+        return;
+      }
     }
 
     // Check password length (minimum 6 characters)
@@ -53,11 +72,37 @@ export default function Signup({ navigation }) {
       return;
     }
 
+    // Check for password strength
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasLowerCase = /[a-z]/.test(password);
+    const hasNumbers = /\d/.test(password);
+    
+    if (!hasUpperCase || !hasLowerCase || !hasNumbers) {
+      Alert.alert(
+        "Weak Password", 
+        "For better security, your password should include:\n• At least one uppercase letter\n• At least one lowercase letter\n• At least one number"
+      );
+      return;
+    }
+
     setLoading(true);
 
     try {
       const trimmedUsername = username.trim();
       const trimmedEmail = email.trim().toLowerCase();
+
+      // Check if username already exists
+      const usernameQuery = query(
+        collection(db, "users"), 
+        where("username", "==", trimmedUsername)
+      );
+      const usernameSnapshot = await getDocs(usernameQuery);
+      
+      if (!usernameSnapshot.empty) {
+        setLoading(false);
+        Alert.alert("Username Taken", "This username is already registered. Please choose a different one.");
+        return;
+      }
 
       // Create user in Firebase Auth
       const userCredential = await createUser(trimmedEmail, password);
@@ -72,16 +117,15 @@ export default function Signup({ navigation }) {
         createdAt: new Date().toISOString(),
       });
 
-        // Also create a minimal public username -> email/uid mapping so sign-in by username
-        // can resolve the email without reading the full users collection.
-        try {
-          await setDoc(doc(db, "usernames", trimmedUsername.toLowerCase()), {
-            uid: user.uid,
-            email: trimmedEmail,
-          });
-        } catch (e) {
-          console.warn('Failed to write username mapping:', e);
-        }
+      // Create username mapping for sign-in
+      try {
+        await setDoc(doc(db, "usernames", trimmedUsername.toLowerCase()), {
+          uid: user.uid,
+          email: trimmedEmail,
+        });
+      } catch (e) {
+        console.warn('Failed to write username mapping:', e);
+      }
 
       setLoading(false);
       Alert.alert("Success", "Account created successfully!", [
@@ -92,9 +136,11 @@ export default function Signup({ navigation }) {
       console.log("Signup error:", error);
       
       if (error.code === "auth/email-already-in-use") {
-        Alert.alert("Error", "This email is already registered.");
+        Alert.alert("Error", "This email is already registered. Please use a different email or sign in.");
       } else if (error.code === "auth/weak-password") {
         Alert.alert("Error", "Password should be at least 6 characters.");
+      } else if (error.code === "auth/invalid-email") {
+        Alert.alert("Error", "Invalid email format. Please check your email address.");
       } else {
         Alert.alert("Error", "Signup failed. Please try again.");
       }
@@ -127,10 +173,11 @@ export default function Signup({ navigation }) {
                 style={styles.input}
                 value={username}
                 onChangeText={setUsername}
+                autoCapitalize="none"
               />
 
               <TextInput
-                placeholder="EMAIL"
+                placeholder="EMAIL (e.g., user@gmail.com)"
                 placeholderTextColor="#999"
                 keyboardType="email-address"
                 autoCapitalize="none"
@@ -153,7 +200,19 @@ export default function Signup({ navigation }) {
                 </TouchableOpacity>
               </View>
 
-              <TouchableOpacity style={[styles.button, loading && { opacity: 0.7 }]} onPress={handleSignUp} disabled={loading}>
+              <View style={styles.passwordHintContainer}>
+                <Text style={styles.passwordHint}>
+                  Strong password should include:
+                </Text>
+                <Text style={styles.passwordHintItem}>• Uppercase & lowercase letters</Text>
+                <Text style={styles.passwordHintItem}>• Numbers (0-9)</Text>
+              </View>
+
+              <TouchableOpacity 
+                style={[styles.button, loading && { opacity: 0.7 }]} 
+                onPress={handleSignUp} 
+                disabled={loading}
+              >
                 {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>SIGN UP</Text>}
               </TouchableOpacity>
 
@@ -173,18 +232,101 @@ export default function Signup({ navigation }) {
 
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
-  scrollContainer: { flexGrow: 1, justifyContent: "center", alignItems: "center", paddingVertical: 40 },
+  scrollContainer: { flexGrow: 1, justifyContent: "center", alignItems: "center", paddingVertical: 20 },
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
-  closeButton: { position: "absolute", top: 15, right: 20, zIndex: 10, backgroundColor: "rgba(0,0,0,0.3)", padding: 8, borderRadius: 20 },
-  logoContainer: { marginTop: -60, marginBottom: 10, alignItems: "center" },
+  closeButton: { 
+    position: "absolute", 
+    top: 15, 
+    right: 20, 
+    zIndex: 10, 
+    backgroundColor: "rgba(0,0,0,0.3)", 
+    padding: 8, 
+    borderRadius: 20 
+  },
+  logoContainer: { marginTop: -70, alignItems: "center" },
   logo: { width: 300, height: 300 },
-  card: { width: "85%", backgroundColor: "rgba(255,255,255,0.9)", borderRadius: 20, padding: 25, alignItems: "center", shadowColor: "#000", shadowOpacity: 0.15, shadowOffset: { width: 0, height: 4 }, shadowRadius: 6, elevation: 5 },
-  subtitle: { fontFamily: "Poppins_600SemiBold", fontSize: 14, color: "#333", marginBottom: 25 },
-  input: { width: "100%", height: 50, backgroundColor: "#fff", borderRadius: 10, paddingHorizontal: 15, fontFamily: "Poppins_400Regular", fontSize: 14, marginBottom: 15, borderWidth: 1, borderColor: "#ddd" },
-  passwordContainer: { width: "100%", flexDirection: "row", alignItems: "center", marginBottom: 15, backgroundColor: "#fff", borderRadius: 10, borderWidth: 1, borderColor: "#ddd" },
+  card: { 
+    width: "85%", 
+    backgroundColor: "rgba(255,255,255,0.9)", 
+    borderRadius: 20, 
+    padding: 25, 
+    alignItems: "center", 
+    shadowColor: "#000", 
+    shadowOpacity: 0.15, 
+    shadowOffset: { width: 0, height: 4 }, 
+    shadowRadius: 6, 
+    elevation: 5 
+  },
+  subtitle: { 
+    fontFamily: "Poppins_600SemiBold", 
+    fontSize: 14, 
+    color: "#333", 
+    marginBottom: 25 
+  },
+  input: { 
+    width: "100%", 
+    height: 50, 
+    backgroundColor: "#fff", 
+    borderRadius: 10, 
+    paddingHorizontal: 15, 
+    fontFamily: "Poppins_400Regular", 
+    fontSize: 14, 
+    marginBottom: 15, 
+    borderWidth: 1, 
+    borderColor: "#ddd" 
+  },
+  passwordContainer: { 
+    width: "100%", 
+    flexDirection: "row", 
+    alignItems: "center", 
+    marginBottom: 10, 
+    backgroundColor: "#fff", 
+    borderRadius: 10, 
+    borderWidth: 1, 
+    borderColor: "#ddd" 
+  },
   eyeIcon: { paddingHorizontal: 10 },
-  button: { width: "100%", height: 50, backgroundColor: "#1E90FF", borderRadius: 10, justifyContent: "center", alignItems: "center", marginTop: 10 },
-  buttonText: { color: "#fff", fontFamily: "Poppins_600SemiBold", fontSize: 16 },
-  signupText: { fontFamily: "Poppins_400Regular", fontSize: 13, color: "#333", marginTop: 20 },
-  signupLink: { color: "#1E90FF", fontFamily: "Poppins_600SemiBold" },
+  passwordHintContainer: {
+    width: "100%",
+    backgroundColor: "#E3F2FD",
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 5,
+  },
+  passwordHint: {
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 12,
+    color: "#1565C0",
+    marginBottom: 2,
+  },
+  passwordHintItem: {
+    fontFamily: "Poppins_400Regular",
+    fontSize: 11,
+    color: "#555",
+    marginLeft: 10,
+  },
+  button: { 
+    width: "100%", 
+    height: 50, 
+    backgroundColor: "#1E90FF", 
+    borderRadius: 10, 
+    justifyContent: "center", 
+    alignItems: "center", 
+    marginTop: 10 
+  },
+  buttonText: { 
+    color: "#fff", 
+    fontFamily: "Poppins_600SemiBold", 
+    fontSize: 16 
+  },
+  signupText: { 
+    fontFamily: "Poppins_400Regular", 
+    fontSize: 13, 
+    color: "#333", 
+    marginTop: 20 
+  },
+  signupLink: { 
+    color: "#1E90FF", 
+    fontFamily: "Poppins_600SemiBold" 
+  },
 });

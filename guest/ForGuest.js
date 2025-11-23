@@ -37,8 +37,11 @@ export default function ForGuest({ navigation }) {
   const [userInput, setUserInput] = useState([]);
   const [completed, setCompleted] = useState(false);
   const [wrong, setWrong] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const shakeAnim = useRef(new Animated.Value(0)).current;
+  const successScale = useRef(new Animated.Value(0)).current;
+  const successOpacity = useRef(new Animated.Value(0)).current;
 
   const [fontsLoaded] = useFonts({
     Poppins_400Regular,
@@ -75,6 +78,26 @@ export default function ForGuest({ navigation }) {
     ]).start(() => setWrong(false));
   };
 
+  const triggerSuccess = () => {
+    setShowSuccess(true);
+    successScale.setValue(0);
+    successOpacity.setValue(0);
+    
+    Animated.parallel([
+      Animated.spring(successScale, {
+        toValue: 1,
+        friction: 4,
+        tension: 40,
+        useNativeDriver: true,
+      }),
+      Animated.timing(successOpacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
   const handleGuess = (letter) => {
     if (userInput.length >= wordLetters.length) return;
 
@@ -88,13 +111,19 @@ export default function ForGuest({ navigation }) {
       setTimeout(() => {
         if (guessWord === correctWord) {
           setScore(prev => prev + 10);
+          triggerSuccess();
+          
           if (level + 1 === levels.length) {
-            setCompleted(true);
+            setTimeout(() => {
+              setCompleted(true);
+              setShowSuccess(false);
+            }, 1500);
           } else {
             setTimeout(() => {
               setLevel(level + 1);
               setUserInput([]);
-            }, 500);
+              setShowSuccess(false);
+            }, 1500);
           }
         } else {
           triggerShake();
@@ -163,6 +192,23 @@ export default function ForGuest({ navigation }) {
         style={styles.guest_logo}
         resizeMode="contain"
       />
+
+      {/* Success Animation Overlay */}
+      {showSuccess && (
+        <View style={styles.guest_successOverlay}>
+          <Animated.View
+            style={[
+              styles.guest_successCheckContainer,
+              {
+                transform: [{ scale: successScale }],
+                opacity: successOpacity,
+              },
+            ]}
+          >
+            <Ionicons name="checkmark-circle" size={120} color="#4CAF50" />
+          </Animated.View>
+        </View>
+      )}
 
       <View style={styles.guest_topInfo}>
         <Text style={[styles.guest_level, { fontFamily: "Poppins_400Regular" }]}>
@@ -354,5 +400,20 @@ const styles = StyleSheet.create({
   guest_text: {
     fontSize: 18,
     marginVertical: 6,
+  },
+  guest_successOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    zIndex: 1000,
+  },
+  guest_successCheckContainer: {
+    justifyContent: "center",
+    alignItems: "center",
   },
 });

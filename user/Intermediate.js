@@ -15,6 +15,8 @@ import { useFonts, Poppins_400Regular, Poppins_600SemiBold } from "@expo-google-
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { doc, updateDoc, getDoc } from "firebase/firestore";
 import { db } from "../firebase";
+import * as Haptics from 'expo-haptics';
+import { useSettings } from './SettingsContext';
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -29,11 +31,15 @@ export default function Intermediate({ route, navigation }) {
   const [userInput, setUserInput] = useState([]);
   const [completed, setCompleted] = useState(false);
   const [wrong, setWrong] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
   const [revealedLetters, setRevealedLetters] = useState([]);
 
   const shakeAnim = useRef(new Animated.Value(0)).current;
+  const successScale = useRef(new Animated.Value(0)).current;
+  const successOpacity = useRef(new Animated.Value(0)).current;
 
   const [fontsLoaded] = useFonts({ Poppins_400Regular, Poppins_600SemiBold });
+  const { vibrationEnabled } = useSettings();
 
   useEffect(() => {
     const loadStoredScore = async () => {
@@ -52,6 +58,27 @@ export default function Intermediate({ route, navigation }) {
     loadStoredScore();
   }, []);
 
+  // Load revealed letters when level changes
+  useEffect(() => {
+    if (!difficulty || !category) return;
+    const loadRevealedLetters = async () => {
+      try {
+        const userId = await AsyncStorage.getItem("userId");
+        const key = `${userId}_${difficulty}_${category}_level${level}_revealed`;
+        const stored = await AsyncStorage.getItem(key);
+        if (stored) {
+          setRevealedLetters(JSON.parse(stored));
+        } else {
+          setRevealedLetters([]);
+        }
+      } catch (e) {
+        console.error("Error loading revealed letters:", e);
+        setRevealedLetters([]);
+      }
+    };
+    loadRevealedLetters();
+  }, [level, difficulty, category]);
+
   useEffect(() => {
     if (!difficulty || !category) return;
     const saveProgress = async () => {
@@ -65,6 +92,21 @@ export default function Intermediate({ route, navigation }) {
     };
     saveProgress();
   }, [level, difficulty, category]);
+
+  // Save revealed letters whenever they change
+  useEffect(() => {
+    if (!difficulty || !category) return;
+    const saveRevealedLetters = async () => {
+      try {
+        const userId = await AsyncStorage.getItem("userId");
+        const key = `${userId}_${difficulty}_${category}_level${level}_revealed`;
+        await AsyncStorage.setItem(key, JSON.stringify(revealedLetters));
+      } catch (e) {
+        console.error("Error saving revealed letters:", e);
+      }
+    };
+    saveRevealedLetters();
+  }, [revealedLetters, level, difficulty, category]);
 
   const updateStoredScore = async (newScore) => {
     try {
@@ -80,6 +122,7 @@ export default function Intermediate({ route, navigation }) {
   };
 
   const triggerShake = () => {
+    if (vibrationEnabled) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     setWrong(true);
     Animated.sequence([
       Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
@@ -88,6 +131,27 @@ export default function Intermediate({ route, navigation }) {
       Animated.timing(shakeAnim, { toValue: -6, duration: 50, useNativeDriver: true }),
       Animated.timing(shakeAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
     ]).start(() => setWrong(false));
+  };
+
+  const triggerSuccess = () => {
+    if (vibrationEnabled) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setShowSuccess(true);
+    successScale.setValue(0);
+    successOpacity.setValue(0);
+    
+    Animated.parallel([
+      Animated.spring(successScale, {
+        toValue: 1,
+        friction: 4,
+        tension: 40,
+        useNativeDriver: true,
+      }),
+      Animated.timing(successOpacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start();
   };
 
   const handleShowHint = () => {
@@ -136,6 +200,7 @@ export default function Intermediate({ route, navigation }) {
   };
 
   const handleGuess = (letter) => {
+    if (vibrationEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     // Count how many letters player needs to enter (excluding revealed positions)
     const positionsToFill = [];
     for (let i = 0; i < currentWord.length; i++) {
@@ -170,16 +235,22 @@ export default function Intermediate({ route, navigation }) {
           const newScore = score + 20;
           setScore(newScore);
           updateStoredScore(newScore);
+          
+          triggerSuccess();
 
           if (level + 1 === levels.length) {
-            setLevel(level + 1);
-            setCompleted(true);
+            setTimeout(() => {
+              setLevel(level + 1);
+              setCompleted(true);
+              setShowSuccess(false);
+            }, 1500);
           } else {
             setTimeout(() => {
               setLevel(level + 1);
               setUserInput([]);
               setRevealedLetters([]);
-            }, 500);
+              setShowSuccess(false);
+            }, 1500);
           }
         } else {
           triggerShake();
@@ -228,12 +299,46 @@ export default function Intermediate({ route, navigation }) {
   for (let i = 0; i < alphabet.length; i += 4) keyboardRows.push(alphabet.slice(i, i + 4));
   keyboardRows[keyboardRows.length - 1].push("Erase");
 
+  // Helper function to get the display letter for each box
+  const getDisplayLetter = (index) => {
+    if (revealedLetters.includes(index)) {
+      return wordLetters[index]; // Show revealed letter
+    }
+    
+    // Count how many user input letters should appear before this position
+    let userInputIndex = 0;
+    for (let i = 0; i < index; i++) {
+      if (!revealedLetters.includes(i)) {
+        userInputIndex++;
+      }
+    }
+    
+    return userInput[userInputIndex] || "";
+  };
+
   return (
     <View style={styles.container}>
       <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
         <Ionicons name="arrow-back" size={28} color="#333" />
       </TouchableOpacity>
       <Image source={require("../assets/logo.png")} style={styles.logo} resizeMode="contain" />
+
+      {/* Success Animation Overlay */}
+      {showSuccess && (
+        <View style={styles.successOverlay}>
+          <Animated.View
+            style={[
+              styles.successCheckContainer,
+              {
+                transform: [{ scale: successScale }],
+                opacity: successOpacity,
+              },
+            ]}
+          >
+            <Ionicons name="checkmark-circle" size={120} color="#4CAF50" />
+          </Animated.View>
+        </View>
+      )}
 
       {completed ? (
         <View style={{ flex: 1, width: "100%", justifyContent: "center", alignItems: "center", paddingHorizontal: 20, backgroundColor: "#DDF3FF" }}>
@@ -270,7 +375,9 @@ export default function Intermediate({ route, navigation }) {
           <Animated.View style={[styles.wordContainer, { transform: [{ translateX: shakeAnim }] }]}>
             {wordLetters.map((letter, i) => (
               <View key={i} style={[styles.box, { width: boxWidth, height: boxHeight, borderColor: wrong ? "#E74C3C" : "#1B4D90", backgroundColor: revealedLetters.includes(i) ? "#E8F5E9" : (wrong ? "#FFD6D6" : "#fff") }]}>
-                <Text style={[styles.letter, { fontFamily: "Poppins_600SemiBold", fontSize: boxWidth * 0.6 }]}>{revealedLetters.includes(i) ? letter : (userInput[i] || "")}</Text>
+                <Text style={[styles.letter, { fontFamily: "Poppins_600SemiBold", fontSize: boxWidth * 0.6 }]}>
+                  {getDisplayLetter(i)}
+                </Text>
               </View>
             ))}
           </Animated.View>
@@ -334,4 +441,19 @@ const styles = StyleSheet.create({
   keyText: { color: "white", fontSize: 20 },
   title: { fontSize: 24, marginVertical: 10 },
   text: { fontSize: 18, marginVertical: 6 },
+  successOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    zIndex: 1000,
+  },
+  successCheckContainer: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
 });
